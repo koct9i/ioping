@@ -35,15 +35,29 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/mount.h>
+#include <sys/ioctl.h>
 
-long long now(void)
+void usage(void)
 {
-	struct timeval tv;
-
-	if (gettimeofday(&tv, NULL))
-		err(1, "gettimeofday failed");
-
-	return tv.tv_sec * 1000000ll + tv.tv_usec;
+	fprintf(stderr,
+			" Usage: ioping [-CDhq] [-c count] [-w deadline] [-p period]\n"
+			"               [-i interval] [-s size] [-S wsize] [-o offset] device|file|directory\n"
+			"\n"
+			"      -c <count>      stop after <count> requests\n"
+			"      -w <deadline>   stop after <deadline>\n"
+			"      -p <period>     print raw statistics for every <period> requests\n"
+			"      -i <interval>   interval between requests\n"
+			"      -s <size>       request size\n"
+			"      -S <wsize>      working set size\n"
+			"      -o <offset>     in file offset\n"
+			"      -C              use cached-io\n"
+			"      -D              use direct-io\n"
+			"      -h              display this mesage and exit\n"
+			"      -q              suppress human-readable output\n"
+			"\n"
+	       );
+	exit(0);
 }
 
 struct suffix {
@@ -139,25 +153,14 @@ long long parse_time(const char *str)
 	return parse_suffix(str, sfx);
 }
 
-void usage(void)
+long long now(void)
 {
-	fprintf(stderr,
-			" Usage: ioping [-DCRhq] [-c count] [-w deadline] [-p pediod]\n"
-			"               [-i interval] [-s size] [-o offset] device|file|directory\n"
-			"\n"
-			"      -c <count>      stop after <count> requests\n"
-			"      -w <deadline>   stop after <deadline>\n"
-			"      -p <period>     print raw statistics every <period> requests\n"
-			"      -i <interval>   interval between requests\n"
-			"      -s <size>       request size\n"
-			"      -o <offset>     offset in file\n"
-			"      -D              use direct-io\n"
-			"      -C              use cached-io\n"
-			"      -h              display this mesage and exit\n"
-			"      -q              suppress human-readable output\n"
-			"\n"
-	       );
-	exit(0);
+	struct timeval tv;
+
+	if (gettimeofday(&tv, NULL))
+		err(1, "gettimeofday failed");
+
+	return tv.tv_sec * 1000000ll + tv.tv_usec;
 }
 
 char *path = NULL;
@@ -175,8 +178,11 @@ int cached = 0;
 long long interval = 1000000;
 long long deadline = 0;
 
-ssize_t size = 512;
+ssize_t size = 1<<12;
+ssize_t wsize = 1<<20;
+
 off_t offset = 0;
+off_t woffset = 0;
 
 int request;
 int count = 0;
@@ -190,7 +196,7 @@ void parse_options(int argc, char **argv)
 	if (argc < 2)
 		usage();
 
-	while ((opt = getopt(argc, argv, "-hDCqi:w:s:c:o:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "-hDCqi:w:s:S:c:o:p:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -208,6 +214,13 @@ void parse_options(int argc, char **argv)
 				break;
 			case 's':
 				size = parse_size(optarg);
+				if (size > wsize)
+					wsize = size;
+				break;
+			case 'S':
+				wsize = parse_size(optarg);
+				if (wsize < size)
+					size = wsize;
 				break;
 			case 'o':
 				offset = parse_size(optarg);
@@ -301,27 +314,45 @@ int main (int argc, char **argv)
 
 	parse_options(argc, argv);
 
+	flags = O_RDONLY;
+	if (direct)
+		flags |= O_DIRECT;
+
 	if (lstat(path, &stat))
 		err(1, "stat \"%s\" failed", path);
 
-	if (S_ISREG(stat.st_mode) || S_ISDIR(stat.st_mode)) {
+	if (S_ISDIR(stat.st_mode) || S_ISREG(stat.st_mode)) {
+		if (S_ISDIR(stat.st_mode))
+			stat.st_size = wsize;
 		if (!quiet)
 			parse_device(stat.st_dev);
 	} else if (S_ISBLK(stat.st_mode)) {
+		unsigned long long blksize;
+
+		fd = open(path, flags);
+		if (fd < 0)
+			err(1, "failed to open \"%s\"", path);
+
+		ret = ioctl(fd, BLKGETSIZE64, &blksize);
+		if (ret)
+			err(1, "block get size ioctl failed");
+		stat.st_size = blksize;
+
 		fstype = "block";
 		device = "device";
 	} else {
 		errx(1, "unsupported destination: \"%s\"", path);
 	}
 
+	if (wsize > stat.st_size)
+		wsize = stat.st_size;
+	if (size > stat.st_size)
+		size = stat.st_size;
+
 	buf = memalign(sysconf(_SC_PAGE_SIZE), size);
 	if (!buf)
 		errx(1, "buffer allocation failed");
 	memset(buf, '*', size);
-
-	flags = O_RDONLY;
-	if (direct)
-		flags |= O_DIRECT;
 
 	if (S_ISDIR(stat.st_mode)) {
 		char *tmpl = "/ioping.XXXXXX";
@@ -335,11 +366,13 @@ int main (int argc, char **argv)
 			err(1, "failed to create temporary file at \"%s\"", path);
 		if (unlink(temp))
 			err(1, "unlink \"%s\" failed", temp);
-		if (pwrite(fd, buf, size, offset) != size)
-			err(1, "write failed");
+		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
+			if (pwrite(fd, buf, size, offset + woffset) != size)
+				err(1, "write failed");
+		}
 		if (fsync(fd))
 			err(1, "fsync failed");
-	} else {
+	} else if (S_ISREG(stat.st_mode)) {
 		fd = open(path, flags);
 		if (fd < 0)
 			err(1, "failed to open \"%s\"", path);
@@ -351,6 +384,8 @@ int main (int argc, char **argv)
 	set_signal(SIGINT, sig_exit);
 
 	request = 0;
+	woffset = 0;
+
 	part_min = time_min = LLONG_MAX;
 	part_max = time_max = LLONG_MIN;
 	part_sum = time_sum = 0;
@@ -367,14 +402,14 @@ int main (int argc, char **argv)
 		request++;
 
 		if (!cached) {
-			ret = posix_fadvise(fd, offset, size,
+			ret = posix_fadvise(fd, offset + woffset, size,
 					POSIX_FADV_DONTNEED);
 			if (ret)
 				err(1, "fadvise failed");
 		}
 
 		this_time = now();
-		ret_size = pread(fd, buf, size, offset);
+		ret_size = pread(fd, buf, size, offset + woffset);
 		if (ret_size < 0 && errno != EINTR)
 			err(1, "read failed");
 		this_time = now() - this_time;
@@ -410,6 +445,10 @@ int main (int argc, char **argv)
 			part_sum = part_sum2 = 0;
 		}
 
+		woffset += size;
+		if (woffset + size > wsize)
+			woffset = 0;
+
 		if (!exiting)
 			usleep(interval);
 	}
@@ -430,7 +469,7 @@ int main (int argc, char **argv)
 		printf("\n--- %s ioping statistics ---\n", path);
 		printf("%d requests completed in %.1f ms\n",
 				request, time_total/1000.);
-		printf(" min/avg/max/mdev = %.1f/%.1f/%.1f/%.1f ms\n",
+		printf("min/avg/max/mdev = %.1f/%.1f/%.1f/%.1f ms\n",
 				time_min/1000., time_avg/1000.,
 				time_max/1000., time_mdev/1000.);
 	}
