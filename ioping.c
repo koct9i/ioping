@@ -41,19 +41,20 @@
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-CDhq] [-c count] [-w deadline] [-p period]\n"
+			" Usage: ioping [-RCDhq] [-c count] [-w deadline] [-p period]\n"
 			"               [-i interval] [-s size] [-S wsize] [-o offset] device|file|directory\n"
 			"\n"
 			"      -c <count>      stop after <count> requests\n"
 			"      -w <deadline>   stop after <deadline>\n"
 			"      -p <period>     print raw statistics for every <period> requests\n"
-			"      -i <interval>   interval between requests\n"
-			"      -s <size>       request size\n"
-			"      -S <wsize>      working set size\n"
+			"      -i <interval>   interval between requests (1s)\n"
+			"      -s <size>       request size (4k)\n"
+			"      -S <wsize>      working set size (1m)\n"
 			"      -o <offset>     in file offset\n"
+			"      -R              use random offsets in the work set\n"
 			"      -C              use cached-io\n"
 			"      -D              use direct-io\n"
-			"      -h              display this mesage and exit\n"
+			"      -h              display this message and exit\n"
 			"      -q              suppress human-readable output\n"
 			"\n"
 	       );
@@ -174,6 +175,7 @@ int quiet = 0;
 int period = 0;
 int direct = 0;
 int cached = 0;
+int randomize = 0;
 
 long long interval = 1000000;
 long long deadline = 0;
@@ -196,10 +198,13 @@ void parse_options(int argc, char **argv)
 	if (argc < 2)
 		usage();
 
-	while ((opt = getopt(argc, argv, "-hDCqi:w:s:S:c:o:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "-hRDCqi:w:s:S:c:o:p:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
+			case 'R':
+				randomize = 1;
+				break;
 			case 'D':
 				direct = 1;
 				break;
@@ -378,6 +383,14 @@ int main (int argc, char **argv)
 			err(1, "failed to open \"%s\"", path);
 	}
 
+	if (!cached) {
+		ret = posix_fadvise(fd, offset, wsize, POSIX_FADV_RANDOM);
+		if (ret)
+			err(1, "fadvise failed");
+	}
+
+	srandom(now());
+
 	if (deadline)
 		deadline += now();
 
@@ -400,6 +413,9 @@ int main (int argc, char **argv)
 			break;
 
 		request++;
+
+		if (randomize)
+			woffset = random() % (wsize / size) * size;
 
 		if (!cached) {
 			ret = posix_fadvise(fd, offset + woffset, size,
