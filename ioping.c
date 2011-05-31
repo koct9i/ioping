@@ -41,8 +41,8 @@
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-RCDhq] [-c count] [-w deadline] [-p period]\n"
-			"               [-i interval] [-s size] [-S wsize] [-o offset] device|file|directory\n"
+			" Usage: ioping [-RCDhq] [-c count] [-w deadline] [-p period] [-i interval]\n"
+			"               [-s size] [-S wsize] [-o offset] device|file|directory\n"
 			"\n"
 			"      -c <count>      stop after <count> requests\n"
 			"      -w <deadline>   stop after <deadline>\n"
