@@ -366,11 +366,13 @@ int main (int argc, char **argv)
 		if (!temp)
 			err(1, NULL);
 		sprintf(temp, "%s%s", path, tmpl);
-		fd = mkostemp(temp, flags);
+		fd = mkstemp(temp);
 		if (fd < 0)
 			err(1, "failed to create temporary file at \"%s\"", path);
 		if (unlink(temp))
 			err(1, "unlink \"%s\" failed", temp);
+		if (fcntl(fd, F_SETFL, flags))
+			err("fcntl failed, please retry without -D");
 		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
 			if (pwrite(fd, buf, size, offset + woffset) != size)
 				err(1, "write failed");
