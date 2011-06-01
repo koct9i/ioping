@@ -49,7 +49,7 @@ void usage(void)
 			"      -p <period>     print raw statistics for every <period> requests\n"
 			"      -i <interval>   interval between requests (1s)\n"
 			"      -s <size>       request size (4k)\n"
-			"      -S <wsize>      working set size (1m)\n"
+			"      -S <wsize>      working set size (1m for dirs, full range for others)\n"
 			"      -o <offset>     in file offset\n"
 			"      -L              use sequential operations rather than random\n"
 			"      -C              use cached-io\n"
@@ -181,7 +181,8 @@ long long interval = 1000000;
 long long deadline = 0;
 
 ssize_t size = 1<<12;
-ssize_t wsize = 1<<20;
+ssize_t wsize = 0;
+ssize_t temp_wsize = 1<<20;
 
 off_t offset = 0;
 off_t woffset = 0;
@@ -219,13 +220,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 's':
 				size = parse_size(optarg);
-				if (size > wsize)
-					wsize = size;
 				break;
 			case 'S':
 				wsize = parse_size(optarg);
-				if (wsize < size)
-					size = wsize;
 				break;
 			case 'o':
 				offset = parse_size(optarg);
@@ -319,6 +316,14 @@ int main (int argc, char **argv)
 
 	parse_options(argc, argv);
 
+	if (wsize)
+		temp_wsize = wsize;
+	else if (size > temp_wsize)
+		temp_wsize = size;
+
+	if (size <= 0)
+		errx(1, "request size must be greather than zero");
+
 	flags = O_RDONLY;
 	if (direct)
 		flags |= O_DIRECT;
@@ -328,7 +333,7 @@ int main (int argc, char **argv)
 
 	if (S_ISDIR(stat.st_mode) || S_ISREG(stat.st_mode)) {
 		if (S_ISDIR(stat.st_mode))
-			stat.st_size = wsize;
+			stat.st_size = offset + temp_wsize;
 		if (!quiet)
 			parse_device(stat.st_dev);
 	} else if (S_ISBLK(stat.st_mode)) {
@@ -349,10 +354,14 @@ int main (int argc, char **argv)
 		errx(1, "unsupported destination: \"%s\"", path);
 	}
 
-	if (wsize > stat.st_size)
-		wsize = stat.st_size;
-	if (size > stat.st_size)
-		size = stat.st_size;
+	if (offset + wsize > stat.st_size)
+		errx(1, "target is too small for this");
+
+	if (!wsize)
+		wsize = stat.st_size - offset;
+
+	if (size > wsize)
+		errx(1, "request size is too big for this target");
 
 	buf = memalign(sysconf(_SC_PAGE_SIZE), size);
 	if (!buf)
