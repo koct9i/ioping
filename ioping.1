@@ -1,0 +1,90 @@
+.TH IOPING "1" "May 2011" "" "User Commands"
+.SH NAME
+ioping \- simple disk I/O latency monitoring tool
+.SH SYNOPSYS
+\fBioping\fR [\fB\-RCDhq\fR] [\fB\-c \fIcount\fR] [\fB\-w \fIdeadline\fR] \
+ [\fB\-p \fIperiod\fR] [\fB\-i \fIinterval\fR] [\fB\-s \fIsize\fR] \
+ [\fB\-S \fIwsize\fR] [\fB\-o \fIoffset\fR] \
+ \fIdevice\fR | \fIfile\fR | \fIdirectory\fR
+.SH DESCRIPTION
+This tool lets you monitor I/O latency in real time.
+.SH OPTIONS
+.TP
+\fB\-c\fR \fIcount\fR
+Stop after \fIcount\fR requests.
+.TP
+\fB\-w\fR \fIdeadline\fR
+Stop after \fIdeadline\fR time passed.
+.TP
+\fB\-p\fR \fIperiod\fR
+Print raw statistics for every \fIperiod\fR requests.
+.TP
+\fB\-i\fR \fIinterval\fR
+Set time between requests to \fIinterval\fR.
+.TP
+\fB\-s\fR \fIsize\fR
+Request size.
+.TP
+\fB\-S\fR \fIwsize\fR
+Working set size.
+.TP
+\fB\-o\fR \fIoffset\fR
+Offset in input file.
+.TP
+\fB\-R\fR
+Use random offsets in the work set.
+.TP
+\fB\-C\fR
+Use cached I/O.
+.TP
+\fB\-D\fR
+Use direct I/O.
+.TP
+\fB\-h\fR
+Display help message and exit.
+.TP
+\fB\-q\fR
+Suppress human-readable output.
+.SS Argument suffixes
+For options that expect time argument (\fB\-i\fR and \fB-w\fR),
+default is seconds, unless you specify one of the below suffixes:
+.TP
+\fBus\fR, \fBusec\fR
+microseconds
+.TP
+\fBms\fR, \fBmsec\fR
+milliseconds
+.TP
+\fBs\fR, \fBsec\fR
+seconds
+.TP
+\fBm\fR, \fBmin\fR
+minutes
+.TP
+\fBh\fR, \fBhour\fR
+hours
+.PP
+For options that expect "size" argument (\fB-s\fR, \fB-S\fR and \fB-o\fR),
+default is bytes, unless you specify one of the below suffixes:
+.TP
+\fBk\fR, \fBkb\fR
+kilobytes
+.TP
+\fBp\fR
+memory pages (page is always 4K).
+.TP
+\fBm\fR, \fBmb\fR
+megabytes
+.TP
+\fBg\fR, \fBgb\fR
+gigabytes
+.SH EXIT STATUS
+Returns 0 upon success.
+.SH EXAMPLES
+.TP
+.B ioping .
+Show disk I/O latency using the default values and the current directory,
+until interrupted.
+.TP
+.B ioping -c 10 -s 1M /tmp
+Measure latency on \fB/tmp\fR using 10 requests of 1 megabyte each.
