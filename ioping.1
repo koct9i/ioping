@@ -2,7 +2,7 @@
 .SH NAME
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
-\fBioping\fR [\fB\-RCDhq\fR] [\fB\-c \fIcount\fR] [\fB\-w \fIdeadline\fR] \
+\fBioping\fR [\fB\-LCDhq\fR] [\fB\-c \fIcount\fR] [\fB\-w \fIdeadline\fR] \
  [\fB\-p \fIperiod\fR] [\fB\-i \fIinterval\fR] [\fB\-s \fIsize\fR] \
  [\fB\-S \fIwsize\fR] [\fB\-o \fIoffset\fR] \
  \fIdevice\fR | \fIfile\fR | \fIdirectory\fR
@@ -31,8 +31,8 @@ Working set size.
 \fB\-o\fR \fIoffset\fR
 Offset in input file.
 .TP
-\fB\-R\fR
-Use random offsets in the work set.
+\fB\-L\fR
+Use sequential operations rather than random.
 .TP
 \fB\-C\fR
 Use cached I/O.

@@ -41,7 +41,7 @@
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-RCDhq] [-c count] [-w deadline] [-p period] [-i interval]\n"
+			" Usage: ioping [-LCDhq] [-c count] [-w deadline] [-p period] [-i interval]\n"
 			"               [-s size] [-S wsize] [-o offset] device|file|directory\n"
 			"\n"
 			"      -c <count>      stop after <count> requests\n"
@@ -51,7 +51,7 @@ void usage(void)
 			"      -s <size>       request size (4k)\n"
 			"      -S <wsize>      working set size (1m)\n"
 			"      -o <offset>     in file offset\n"
-			"      -R              use random offsets in the work set\n"
+			"      -L              use sequential operations rather than random\n"
 			"      -C              use cached-io\n"
 			"      -D              use direct-io\n"
 			"      -h              display this message and exit\n"
@@ -175,7 +175,7 @@ int quiet = 0;
 int period = 0;
 int direct = 0;
 int cached = 0;
-int randomize = 0;
+int randomize = 1;
 
 long long interval = 1000000;
 long long deadline = 0;
@@ -198,12 +198,12 @@ void parse_options(int argc, char **argv)
 	if (argc < 2)
 		usage();
 
-	while ((opt = getopt(argc, argv, "-hRDCqi:w:s:S:c:o:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "-hLDCqi:w:s:S:c:o:p:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
-			case 'R':
-				randomize = 1;
+			case 'L':
+				randomize = 0;
 				break;
 			case 'D':
 				direct = 1;
@@ -458,9 +458,11 @@ int main (int argc, char **argv)
 			part_sum = part_sum2 = 0;
 		}
 
-		woffset += size;
-		if (woffset + size > wsize)
-			woffset = 0;
+		if (!randomize) {
+			woffset += size;
+			if (woffset + size > wsize)
+				woffset = 0;
+		}
 
 		if (exiting)
 			break;
