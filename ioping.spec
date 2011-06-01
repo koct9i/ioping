@@ -1,15 +1,15 @@
-Name:ioping
-Version:0.1
-Release:1%{?dist}
-Summary:simple disk I/O latency monitoring tool
+Name:		ioping
+Version:	0.1
+Release:	1%{?dist}
+Summary:	simple disk I/O latency monitoring tool
 
-Group:Applications/System
-License:GPLv3+
-URL:http://code.google.com/p/ioping
-Source0:ioping-%{version}.tar.bz2
-BuildRoot:%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+Group:		Applications/System
+License:	GPLv3+
+URL:		http://code.google.com/p/ioping
+Source0:	ioping-%{version}.tar.bz2
+BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
-BuildRequires:gcc, make
+BuildRequires:	gcc, make
 
 %description
 This tool lets you monitor I/O latency in real time, in a way
