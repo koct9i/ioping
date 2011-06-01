@@ -406,13 +406,7 @@ int main (int argc, char **argv)
 	part_sum2 = time_sum2 = 0;
 	time_total = now();
 
-	while (!exiting) {
-		if (count && request >= count)
-			break;
-
-		if (deadline && now() >= deadline)
-			break;
-
+	while (1) {
 		request++;
 
 		if (randomize)
@@ -466,8 +460,16 @@ int main (int argc, char **argv)
 		if (woffset + size > wsize)
 			woffset = 0;
 
-		if (!exiting)
-			usleep(interval);
+		if (exiting)
+			break;
+
+		if (count && request >= count)
+			break;
+
+		if (deadline && now() >= deadline)
+			break;
+
+		usleep(interval);
 	}
 
 	time_total = now() - time_total;
