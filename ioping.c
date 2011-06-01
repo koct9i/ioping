@@ -364,7 +364,7 @@ int main (int argc, char **argv)
 		char *temp = malloc(strlen(path) + strlen(tmpl) + 1);
 
 		if (!temp)
-			errx(1, "no memory");
+			err(1, NULL);
 		sprintf(temp, "%s%s", path, tmpl);
 		fd = mkostemp(temp, flags);
 		if (fd < 0)
@@ -377,6 +377,7 @@ int main (int argc, char **argv)
 		}
 		if (fsync(fd))
 			err(1, "fsync failed");
+		free(temp);
 	} else if (S_ISREG(stat.st_mode)) {
 		fd = open(path, flags);
 		if (fd < 0)
