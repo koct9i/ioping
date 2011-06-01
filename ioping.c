@@ -408,7 +408,7 @@ int main (int argc, char **argv)
 	part_sum2 = time_sum2 = 0;
 	time_total = now();
 
-	while (1) {
+	while (!exiting) {
 		request++;
 
 		if (randomize)
