@@ -4,21 +4,35 @@ PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 MAN1DIR=$(PREFIX)/share/man/man1
 
-all: ioping
+SRCS=ioping.c
+OBJS=$(SRCS:.c=.o)
+BINS=ioping
+MANS=ioping.1
+SPEC=ioping.spec
+
+PACKAGE=ioping
+VERSION=$(shell awk '/^Version:/{print $$2}' $(SPEC))
+DISTDIR=$(PACKAGE)-$(VERSION)
+DISTFILES=$(SRCS) $(MANS) $(SPEC) Makefile
+
+all: $(BINS)
 
 clean:
-	$(RM) -f ioping.o ioping
+	$(RM) -f $(OBJS) $(BINS)
 
-install: ioping
+install: $(BINS) $(MANS)
 	mkdir -p $(DESTDIR)$(BINDIR)
-	install -m 0755 ioping $(DESTDIR)$(BINDIR)
+	install -m 0755 $(BINS) $(DESTDIR)$(BINDIR)
 	mkdir -p $(DESTDIR)$(MAN1DIR)
-	install -m 644 ioping.1 $(DESTDIR)$(MAN1DIR)
+	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
-ioping.o: ioping.c
+%.o: %.c
 	$(CC) -c -o $@ $^ ${CFLAGS}
 
-ioping: ioping.o
+ioping: $(OBJS)
 	$(CC) -o $@ $^ -lm ${LDFLAGS}
 
-.PHONY: all clean install
+dist:
+	tar -cz --transform='s,^,$(DISTDIR)/,S' $(DISTFILES) -f $(DISTDIR).tar.gz
+
+.PHONY: all clean install dist
