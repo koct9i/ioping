@@ -466,7 +466,7 @@ int main (int argc, char **argv)
 		if (count && request >= count)
 			break;
 
-		if (deadline && now() >= deadline)
+		if (deadline && now() + interval >= deadline)
 			break;
 
 		usleep(interval);
