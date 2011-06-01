@@ -248,7 +248,7 @@ void parse_options(int argc, char **argv)
 				path = optarg;
 				break;
 			case '?':
-				errx(1, "unknown option: -%c", optopt);
+				usage();
 		}
 	}
 
