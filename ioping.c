@@ -372,7 +372,7 @@ int main (int argc, char **argv)
 		if (unlink(temp))
 			err(1, "unlink \"%s\" failed", temp);
 		if (fcntl(fd, F_SETFL, flags))
-			err("fcntl failed, please retry without -D");
+			err(1, "fcntl failed, please retry without -D");
 		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
 			if (pwrite(fd, buf, size, offset + woffset) != size)
 				err(1, "write failed");
