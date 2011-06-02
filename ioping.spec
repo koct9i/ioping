@@ -1,5 +1,5 @@
 Name:		ioping
-Version:	0.3
+Version:	0.4
 Release:	1%{?dist}
 Summary:	simple disk I/O latency monitoring tool
 
