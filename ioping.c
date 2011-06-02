@@ -265,7 +265,7 @@ void parse_device(dev_t dev)
 	FILE *file;
 
 	/* since v2.6.26 */
-	file = fopen("/proc/self/mountinfoX", "r");
+	file = fopen("/proc/self/mountinfo", "r");
 	if (!file)
 		goto old;
 	while (getline(&buf, &len, file) > 0) {
