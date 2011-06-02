@@ -32,7 +32,9 @@ install: $(BINS) $(MANS)
 ioping: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-dist:
+dist: $(DISTDIR).tar.gz
+
+$(DISTDIR).tar.gz: $(DISTFILES)
 	tar -cz --transform='s,^,$(DISTDIR)/,S' $(DISTFILES) -f $(DISTDIR).tar.gz
 
 .PHONY: all clean install dist
