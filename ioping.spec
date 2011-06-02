@@ -6,7 +6,7 @@ Summary:	simple disk I/O latency monitoring tool
 Group:		Applications/System
 License:	GPLv3+
 URL:		http://code.google.com/p/ioping
-Source0:	ioping-%{version}.tar.bz2
+Source0:	ioping-%{version}.tar.gz
 BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildRequires:	gcc, make
