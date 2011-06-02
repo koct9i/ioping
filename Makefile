@@ -1,5 +1,5 @@
-CFLAGS=-std=c99 -g -Wall -Wextra -pedantic -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
-LDFLAGS=
+CFLAGS+=-std=c99 -g -Wall -Wextra -pedantic -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
+LDFLAGS=-lm
 PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 MAN1DIR=$(PREFIX)/share/man/man1
@@ -27,10 +27,10 @@ install: $(BINS) $(MANS)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
 %.o: %.c
-	$(CC) -c -o $@ $^ ${CFLAGS}
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 ioping: $(OBJS)
-	$(CC) -o $@ $^ -lm ${LDFLAGS}
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 dist:
 	tar -cz --transform='s,^,$(DISTDIR)/,S' $(DISTFILES) -f $(DISTDIR).tar.gz

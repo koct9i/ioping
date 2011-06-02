@@ -20,7 +20,7 @@ similar to how ping(1) does for network latency.
 
 
 %build
-make %{?_smp_mflags}
+CFLAGS="$RPM_OPT_FLAGS" make %{?_smp_mflags}
 
 
 %install
