@@ -58,7 +58,7 @@ void usage(void)
 			"      -q              suppress human-readable output\n"
 			"\n"
 	       );
-	exit(0);
+	exit(1);
 }
 
 struct suffix {
@@ -159,7 +159,7 @@ long long now(void)
 	struct timeval tv;
 
 	if (gettimeofday(&tv, NULL))
-		err(1, "gettimeofday failed");
+		err(3, "gettimeofday failed");
 
 	return tv.tv_sec * 1000000ll + tv.tv_usec;
 }
@@ -335,7 +335,7 @@ int main (int argc, char **argv)
 		flags |= O_DIRECT;
 
 	if (lstat(path, &stat))
-		err(1, "stat \"%s\" failed", path);
+		err(2, "stat \"%s\" failed", path);
 
 	if (S_ISDIR(stat.st_mode) || S_ISREG(stat.st_mode)) {
 		if (S_ISDIR(stat.st_mode))
@@ -347,31 +347,31 @@ int main (int argc, char **argv)
 
 		fd = open(path, flags);
 		if (fd < 0)
-			err(1, "failed to open \"%s\"", path);
+			err(2, "failed to open \"%s\"", path);
 
 		ret = ioctl(fd, BLKGETSIZE64, &blksize);
 		if (ret)
-			err(1, "block get size ioctl failed");
+			err(2, "block get size ioctl failed");
 		stat.st_size = blksize;
 
 		fstype = "block";
 		device = "device";
 	} else {
-		errx(1, "unsupported destination: \"%s\"", path);
+		errx(2, "unsupported destination: \"%s\"", path);
 	}
 
 	if (offset + wsize > stat.st_size)
-		errx(1, "target is too small for this");
+		errx(2, "target is too small for this");
 
 	if (!wsize)
 		wsize = stat.st_size - offset;
 
 	if (size > wsize)
-		errx(1, "request size is too big for this target");
+		errx(2, "request size is too big for this target");
 
 	buf = memalign(sysconf(_SC_PAGE_SIZE), size);
 	if (!buf)
-		errx(1, "buffer allocation failed");
+		errx(2, "buffer allocation failed");
 	memset(buf, '*', size);
 
 	if (S_ISDIR(stat.st_mode)) {
@@ -379,37 +379,37 @@ int main (int argc, char **argv)
 		char *temp = malloc(strlen(path) + strlen(tmpl) + 1);
 
 		if (!temp)
-			err(1, NULL);
+			err(2, NULL);
 		sprintf(temp, "%s%s", path, tmpl);
 		fd = mkstemp(temp);
 		if (fd < 0)
-			err(1, "failed to create temporary file at \"%s\"", path);
+			err(2, "failed to create temporary file at \"%s\"", path);
 		if (unlink(temp))
-			err(1, "unlink \"%s\" failed", temp);
+			err(2, "unlink \"%s\" failed", temp);
 		if (fcntl(fd, F_SETFL, flags)) {
 			warn("fcntl failed");
 			if (direct)
-				errx(1, "please retry without -D");
-			errx(1, "it is so sad");
+				errx(2, "please retry without -D");
+			errx(2, "it is so sad");
 		}
 
 		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
 			if (pwrite(fd, buf, size, offset + woffset) != size)
-				err(1, "write failed");
+				err(2, "write failed");
 		}
 		if (fsync(fd))
-			err(1, "fsync failed");
+			err(2, "fsync failed");
 		free(temp);
 	} else if (S_ISREG(stat.st_mode)) {
 		fd = open(path, flags);
 		if (fd < 0)
-			err(1, "failed to open \"%s\"", path);
+			err(2, "failed to open \"%s\"", path);
 	}
 
 	if (!cached) {
 		ret = posix_fadvise(fd, offset, wsize, POSIX_FADV_RANDOM);
 		if (ret)
-			err(1, "fadvise failed");
+			err(2, "fadvise failed");
 	}
 
 	srandom(now());
@@ -438,13 +438,13 @@ int main (int argc, char **argv)
 			ret = posix_fadvise(fd, offset + woffset, size,
 					POSIX_FADV_DONTNEED);
 			if (ret)
-				err(1, "fadvise failed");
+				err(3, "fadvise failed");
 		}
 
 		this_time = now();
 		ret_size = pread(fd, buf, size, offset + woffset);
 		if (ret_size < 0 && errno != EINTR)
-			err(1, "read failed");
+			err(3, "read failed");
 		this_time = now() - this_time;
 
 		part_sum += this_time;
