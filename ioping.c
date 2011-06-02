@@ -58,7 +58,6 @@ void usage(void)
 			"      -q              suppress human-readable output\n"
 			"\n"
 	       );
-	exit(1);
 }
 
 struct suffix {
@@ -196,13 +195,16 @@ void parse_options(int argc, char **argv)
 {
 	int opt;
 
-	if (argc < 2)
+	if (argc < 2) {
 		usage();
+		exit(1);
+	}
 
 	while ((opt = getopt(argc, argv, "-hLDCqi:w:s:S:c:o:p:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
+				exit(0);
 			case 'L':
 				randomize = 0;
 				break;
@@ -246,6 +248,7 @@ void parse_options(int argc, char **argv)
 				break;
 			case '?':
 				usage();
+				exit(1);
 		}
 	}
 
