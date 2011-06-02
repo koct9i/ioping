@@ -30,7 +30,7 @@ install: $(BINS) $(MANS)
 	$(CC) $(CFLAGS) -c -o $@ $^
 
 ioping: $(OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 dist: $(DISTDIR).tar.gz
 
