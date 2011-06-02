@@ -389,8 +389,8 @@ int main (int argc, char **argv)
 		if (fcntl(fd, F_SETFL, flags)) {
 			warn("fcntl failed");
 			if (direct)
-				fprintf(stderr, "Please retry without -D\n");
-			exit(1);
+				errx(1, "please retry without -D");
+			errx(1, "it is so sad");
 		}
 
 		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
