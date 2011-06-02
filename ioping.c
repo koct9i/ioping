@@ -278,7 +278,7 @@ old:
 	/* for older versions */
 	file = fopen("/proc/mounts", "r");
 	if (!file)
-		goto out;
+		return;
 	while (getline(&buf, &len, file) > 0) {
 		ptr = buf;
 		strsep(&ptr, " ");
