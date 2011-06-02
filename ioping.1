@@ -79,7 +79,16 @@ megabytes
 \fBg\fR, \fBgb\fR
 gigabytes
 .SH EXIT STATUS
-Returns 0 upon success.
+Returns \fB0\fR upon success. The following error codes are defined:
+.TP
+.B 1
+Invalid usage (error in arguments).
+.TP
+.B 2
+Error during preparation stage.
+.TP
+.B 3
+Error during runtime.
 .SH EXAMPLES
 .TP
 .B ioping .
