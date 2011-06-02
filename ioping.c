@@ -260,12 +260,12 @@ void parse_device(dev_t dev)
 {
 	char *buf = NULL, *ptr;
 	unsigned major, minor;
-	struct stat stat;
+	struct stat st;
 	size_t len;
 	FILE *file;
 
 	/* since v2.6.26 */
-	file = fopen("/proc/self/mountinfo", "r");
+	file = fopen("/proc/self/mountinfoX", "r");
 	if (!file)
 		goto old;
 	while (getline(&buf, &len, file) > 0) {
@@ -285,7 +285,7 @@ old:
 	while (getline(&buf, &len, file) > 0) {
 		ptr = buf;
 		strsep(&ptr, " ");
-		if (*buf != '/' || lstat(buf, &stat) || stat.st_rdev != dev)
+		if (*buf != '/' || stat(buf, &st) || st.st_rdev != dev)
 			continue;
 		strsep(&ptr, " ");
 		fstype = strdup(strsep(&ptr, " "));
@@ -315,7 +315,7 @@ void set_signal(int signo, void (*handler)(int))
 int main (int argc, char **argv)
 {
 	ssize_t ret_size;
-	struct stat stat;
+	struct stat st;
 	int ret, flags;
 
 	long long this_time, time_total;
@@ -337,15 +337,15 @@ int main (int argc, char **argv)
 	if (direct)
 		flags |= O_DIRECT;
 
-	if (lstat(path, &stat))
+	if (stat(path, &st))
 		err(2, "stat \"%s\" failed", path);
 
-	if (S_ISDIR(stat.st_mode) || S_ISREG(stat.st_mode)) {
-		if (S_ISDIR(stat.st_mode))
-			stat.st_size = offset + temp_wsize;
+	if (S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)) {
+		if (S_ISDIR(st.st_mode))
+			st.st_size = offset + temp_wsize;
 		if (!quiet)
-			parse_device(stat.st_dev);
-	} else if (S_ISBLK(stat.st_mode)) {
+			parse_device(st.st_dev);
+	} else if (S_ISBLK(st.st_mode)) {
 		unsigned long long blksize;
 
 		fd = open(path, flags);
@@ -355,7 +355,7 @@ int main (int argc, char **argv)
 		ret = ioctl(fd, BLKGETSIZE64, &blksize);
 		if (ret)
 			err(2, "block get size ioctl failed");
-		stat.st_size = blksize;
+		st.st_size = blksize;
 
 		fstype = "block";
 		device = "device";
@@ -363,11 +363,11 @@ int main (int argc, char **argv)
 		errx(2, "unsupported destination: \"%s\"", path);
 	}
 
-	if (offset + wsize > stat.st_size)
+	if (offset + wsize > st.st_size)
 		errx(2, "target is too small for this");
 
 	if (!wsize)
-		wsize = stat.st_size - offset;
+		wsize = st.st_size - offset;
 
 	if (size > wsize)
 		errx(2, "request size is too big for this target");
@@ -377,7 +377,7 @@ int main (int argc, char **argv)
 		errx(2, "buffer allocation failed");
 	memset(buf, '*', size);
 
-	if (S_ISDIR(stat.st_mode)) {
+	if (S_ISDIR(st.st_mode)) {
 		char *tmpl = "/ioping.XXXXXX";
 		char *temp = malloc(strlen(path) + strlen(tmpl) + 1);
 
@@ -403,7 +403,7 @@ int main (int argc, char **argv)
 		if (fsync(fd))
 			err(2, "fsync failed");
 		free(temp);
-	} else if (S_ISREG(stat.st_mode)) {
+	} else if (S_ISREG(st.st_mode)) {
 		fd = open(path, flags);
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
