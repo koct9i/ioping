@@ -255,37 +255,43 @@ void parse_options(int argc, char **argv)
 
 void parse_device(dev_t dev)
 {
+	char *buf = NULL, *ptr;
 	unsigned major, minor;
-	char *buf = NULL, *ptr, *sep;
+	struct stat stat;
 	size_t len;
-	FILE *mountinfo;
+	FILE *file;
 
 	/* since v2.6.26 */
-	mountinfo = fopen("/proc/self/mountinfo", "r");
-	if (!mountinfo)
-		return;
-
-	while (getline(&buf, &len, mountinfo) > 0) {
+	file = fopen("/proc/self/mountinfo", "r");
+	if (!file)
+		goto old;
+	while (getline(&buf, &len, file) > 0) {
 		sscanf(buf, "%*d %*d %u:%u", &major, &minor);
 		if (makedev(major, minor) != dev)
 			continue;
-		ptr = strstr(buf, " - ");
-		if (!ptr)
-			break;
-		ptr += 3;
-		sep = strchr(ptr, ' ');
-		if (!sep)
-			break;
-		fstype = strndup(ptr, sep - ptr);
-		ptr = sep + 1;
-		sep = strchr(ptr, ' ');
-		if (!sep)
-			break;
-		device = strndup(ptr, sep - ptr);
-		break;
+		ptr = strstr(buf, " - ") + 3;
+		fstype = strdup(strsep(&ptr, " "));
+		device = strdup(strsep(&ptr, " "));
+		goto out;
 	}
+old:
+	/* for older versions */
+	file = fopen("/proc/mounts", "r");
+	if (!file)
+		goto out;
+	while (getline(&buf, &len, file) > 0) {
+		ptr = buf;
+		strsep(&ptr, " ");
+		if (*buf != '/' || lstat(buf, &stat) || stat.st_rdev != dev)
+			continue;
+		strsep(&ptr, " ");
+		fstype = strdup(strsep(&ptr, " "));
+		device = strdup(buf);
+		goto out;
+	}
+out:
 	free(buf);
-	fclose(mountinfo);
+	fclose(file);
 }
 
 void sig_exit(int signo)
