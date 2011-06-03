@@ -511,7 +511,7 @@ int main (int argc, char **argv)
 	time_avg = time_sum / request;
 	time_mdev = sqrt(time_sum2 / request - time_avg * time_avg);
 
-	if (!quiet) {
+	if (!quiet || !period) {
 		printf("\n--- %s ioping statistics ---\n", path);
 		printf("%d requests completed in %.1f ms, %.1f mb/s\n",
 				request, time_total/1000.,
