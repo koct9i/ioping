@@ -513,8 +513,10 @@ int main (int argc, char **argv)
 
 	if (!quiet) {
 		printf("\n--- %s ioping statistics ---\n", path);
-		printf("%d requests completed in %.1f ms\n",
-				request, time_total/1000.);
+		printf("%d requests completed in %.1f ms, %.1f mb/s\n",
+				request, time_total/1000.,
+				(double)request * size / time_sum /
+				(1<<20) * 1000000);
 		printf("min/avg/max/mdev = %.1f/%.1f/%.1f/%.1f ms\n",
 				time_min/1000., time_avg/1000.,
 				time_max/1000., time_mdev/1000.);
