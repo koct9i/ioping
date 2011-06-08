@@ -23,7 +23,6 @@
 #include <stdarg.h>
 #include <getopt.h>
 #include <string.h>
-#include <malloc.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -168,7 +167,7 @@ char *fstype = "";
 char *device = "";
 
 int fd;
-char *buf;
+void *buf;
 
 int quiet = 0;
 int period = 0;
@@ -372,8 +371,8 @@ int main (int argc, char **argv)
 	if (size > wsize)
 		errx(2, "request size is too big for this target");
 
-	buf = memalign(sysconf(_SC_PAGE_SIZE), size);
-	if (!buf)
+	ret = posix_memalign(&buf, sysconf(_SC_PAGE_SIZE), size);
+	if (ret)
 		errx(2, "buffer allocation failed");
 	memset(buf, '*', size);
 
