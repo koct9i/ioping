@@ -367,6 +367,11 @@ int main (int argc, char **argv)
 
 	parse_options(argc, argv);
 
+#ifndef HAVE_POSIX_FADVICE
+	direct |= !cached;
+	cached = 1;
+#endif
+
 	if (wsize)
 		temp_wsize = wsize;
 	else if (size > temp_wsize)
