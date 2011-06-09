@@ -44,6 +44,7 @@
 
 #ifdef __APPLE__
 # include <sys/disk.h>
+# include <sys/uio.h>
 #endif
 
 #ifndef HAVE_POSIX_FADVICE
