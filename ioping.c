@@ -498,7 +498,7 @@ int main (int argc, char **argv)
 			err(2, "failed to open \"%s\"", path);
 	}
 
-#ifdef __APPLE__
+#ifdef F_NOCACHE
 	if (fcntl(fd, F_NOCACHE, direct))
 		err(2, "fcntl nocache failed");
 #endif
