@@ -42,6 +42,10 @@
 # define HAVE_POSIX_MEMALLIGN
 #endif
 
+#ifdef __APPLE__
+# include <sys/disk.h>
+#endif
+
 #ifndef HAVE_POSIX_FADVICE
 # define POSIX_FADV_RANDOM	0
 # define POSIX_FADV_DONTNEED	0
@@ -331,9 +335,24 @@ out:
 
 off_t get_device_size(int fd)
 {
-	unsigned long long blksize;
+	unsigned long long blksize = 0;
+	int ret;
 
-	if (ioctl(fd, BLKGETSIZE64, &blksize))
+#if defined(BLKGETSIZE64)
+	/* linux */
+	ret = ioctl(fd, BLKGETSIZE64, &blksize);
+#elif defined(DIOCGMEDIASIZE)
+	/* freebsd */
+	ret = ioctl(fd, DIOCGMEDIASIZE, &blksize);
+#elif defined(DKIOCGETBLOCKCOUNT)
+	/* macos */
+	ret = ioctl(fd, DKIOCGETBLOCKCOUNT, &blksize);
+	blksize <<= 9;
+#else
+# error no get disk size method
+#endif
+
+	if (ret)
 		err(2, "block get size ioctl failed");
 
 	return blksize;
