@@ -37,6 +37,39 @@
 #include <sys/mount.h>
 #include <sys/ioctl.h>
 
+#ifdef __linux__
+# define HAVE_POSIX_FADVICE
+# define HAVE_POSIX_MEMALLIGN
+#endif
+
+#ifndef HAVE_POSIX_FADVICE
+# define POSIX_FADV_RANDOM	0
+# define POSIX_FADV_DONTNEED	0
+int posix_fadvise(int fd, off_t offset, off_t len, int advice)
+{
+	(void)fd;
+	(void)offset;
+	(void)len;
+	(void)advice;
+
+	errno = ENOSYS;
+	return -1;
+}
+#endif
+
+#ifndef HAVE_POSIX_MEMALLIGN
+/* don't free it */
+int posix_memalign(void **memptr, size_t alignment, size_t size)
+{
+	char *ptr;
+	ptr = malloc(size + alignment);
+	if (!ptr)
+		return -ENOMEM;
+	*memptr = ptr + alignment - (size_t)ptr % alignment;
+	return 0;
+}
+#endif
+
 void usage(void)
 {
 	fprintf(stderr,
