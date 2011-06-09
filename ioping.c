@@ -329,6 +329,16 @@ out:
 	fclose(file);
 }
 
+off_t get_device_size(int fd)
+{
+	unsigned long long blksize;
+
+	if (ioctl(fd, BLKGETSIZE64, &blksize))
+		err(2, "block get size ioctl failed");
+
+	return blksize;
+}
+
 void sig_exit(int signo)
 {
 	(void)signo;
@@ -378,16 +388,11 @@ int main (int argc, char **argv)
 		if (!quiet)
 			parse_device(st.st_dev);
 	} else if (S_ISBLK(st.st_mode)) {
-		unsigned long long blksize;
-
 		fd = open(path, flags);
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
 
-		ret = ioctl(fd, BLKGETSIZE64, &blksize);
-		if (ret)
-			err(2, "block get size ioctl failed");
-		st.st_size = blksize;
+		st.st_size = get_device_size(fd);
 
 		fstype = "block";
 		device = "device";
