@@ -292,6 +292,8 @@ void parse_options(int argc, char **argv)
 		errx(1, "no destination specified");
 }
 
+#ifdef __linux__
+
 void parse_device(dev_t dev)
 {
 	char *buf = NULL, *ptr;
@@ -332,6 +334,29 @@ out:
 	free(buf);
 	fclose(file);
 }
+
+#elif defined(__APPLE__) || defined(__FreeBSD__)
+
+void parse_device(dev_t dev)
+{
+	struct statfs fs;
+	(void)dev;
+
+	if (statfs(path, &fs))
+		return;
+
+	fstype = strdup(fs.f_fstypename);
+	device = strdup(fs.f_mntfromname);
+}
+
+#else
+
+void parse_device(dev_t dev)
+{
+	(void)dev;
+}
+
+#endif
 
 off_t get_device_size(int fd)
 {
