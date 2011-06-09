@@ -400,8 +400,10 @@ int main (int argc, char **argv)
 		errx(1, "request size must be greather than zero");
 
 	flags = O_RDONLY;
+#ifdef O_DIRECT
 	if (direct)
 		flags |= O_DIRECT;
+#endif
 
 	if (stat(path, &st))
 		err(2, "stat \"%s\" failed", path);
@@ -469,6 +471,11 @@ int main (int argc, char **argv)
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
 	}
+
+#ifdef __APPLE__
+	if (fcntl(fd, F_NOCACHE, direct))
+		err(2, "fcntl nocache failed");
+#endif
 
 	if (!cached) {
 		ret = posix_fadvise(fd, offset, wsize, POSIX_FADV_RANDOM);
