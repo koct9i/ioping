@@ -237,7 +237,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "-hLDCqi:w:s:S:c:o:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "hLDCqi:w:s:S:c:o:p:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -275,22 +275,17 @@ void parse_options(int argc, char **argv)
 			case 'c':
 				count = parse_int(optarg);
 				break;
-			case 1:
-				if (path) {
-					errx(1, "more than one destination: "
-							"\"%s\" and \"%s\"",
-							path, optarg);
-				}
-				path = optarg;
-				break;
 			case '?':
 				usage();
 				exit(1);
 		}
 	}
 
-	if (!path)
+	if (optind > argc-1)
 		errx(1, "no destination specified");
+	if (optind < argc-1)
+		errx(1, "more than one destination specified");
+	path = argv[optind];
 }
 
 #ifdef __linux__
