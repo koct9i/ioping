@@ -42,6 +42,10 @@
 # define HAVE_POSIX_MEMALLIGN
 #endif
 
+#ifdef __FreeBSD__
+# include <sys/disk.h>
+#endif
+
 #ifdef __APPLE__
 # include <sys/disk.h>
 # include <sys/uio.h>
