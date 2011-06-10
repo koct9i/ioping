@@ -2,7 +2,7 @@
 .SH NAME
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
-\fBioping\fR [\fB\-LCDhq\fR] [\fB\-c \fIcount\fR] [\fB\-w \fIdeadline\fR] \
+\fBioping\fR [\fB\-LCDRhq\fR] [\fB\-c \fIcount\fR] [\fB\-w \fIdeadline\fR] \
  [\fB\-p \fIperiod\fR] [\fB\-i \fIinterval\fR] [\fB\-s \fIsize\fR] \
  [\fB\-S \fIwsize\fR] [\fB\-o \fIoffset\fR] \
  \fIdevice\fR | \fIfile\fR | \fIdirectory\fR
@@ -39,6 +39,9 @@ Use cached I/O.
 .TP
 \fB\-D\fR
 Use direct I/O.
+.TP
+\fB\-R\fR
+Rate-test, implies: -q -i 0 -w 3
 .TP
 \fB\-h\fR
 Display help message and exit.
@@ -97,3 +100,9 @@ until interrupted.
 .TP
 .B ioping -c 10 -s 1M /tmp
 Measure latency on \fB/tmp\fR using 10 requests of 1 megabyte each.
+.TP
+.B ioping -R /dev/sda
+Measure disk seek rate.
+.TP
+.B ioping -RL /dev/sda
+Measure disk sequential speed.

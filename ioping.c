@@ -82,19 +82,20 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-LCDhq] [-c count] [-w deadline] [-p period] [-i interval]\n"
+			" Usage: ioping [-LCDRhq] [-c count] [-w deadline] [-p period] [-i interval]\n"
 			"               [-s size] [-S wsize] [-o offset] device|file|directory\n"
 			"\n"
 			"      -c <count>      stop after <count> requests\n"
 			"      -w <deadline>   stop after <deadline>\n"
 			"      -p <period>     print raw statistics for every <period> requests\n"
-			"      -i <interval>   interval between requests (1s)\n"
-			"      -s <size>       request size (4k)\n"
-			"      -S <wsize>      working set size (1m for dirs, full range for others)\n"
+			"      -i <interval>   interval between requests\n"
+			"      -s <size>       request size\n"
+			"      -S <wsize>      working set size\n"
 			"      -o <offset>     in file offset\n"
 			"      -L              use sequential operations rather than random\n"
 			"      -C              use cached-io\n"
 			"      -D              use direct-io\n"
+			"      -R              rate-test, implies: -q -i 0 -w 3\n"
 			"      -h              display this message and exit\n"
 			"      -q              suppress human-readable output\n"
 			"\n"
@@ -241,13 +242,20 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hLDCqi:w:s:S:c:o:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "hLRDCqi:w:s:S:c:o:p:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
 				exit(0);
 			case 'L':
 				randomize = 0;
+				size = 1<<18;
+				temp_wsize = 1<<26;
+				break;
+			case 'R':
+				interval = 0;
+				deadline = 3000000;
+				quiet = 1;
 				break;
 			case 'D':
 				direct = 1;
@@ -609,8 +617,9 @@ int main (int argc, char **argv)
 
 	if (!quiet || !period) {
 		printf("\n--- %s ioping statistics ---\n", path);
-		printf("%d requests completed in %.1f ms, %.1f mb/s\n",
+		printf("%d requests completed in %.1f ms, %.0f iops %.1f mb/s\n",
 				request, time_total/1000.,
+				request * 1000000. / time_sum,
 				(double)request * size / time_sum /
 				(1<<20) * 1000000);
 		printf("min/avg/max/mdev = %.1f/%.1f/%.1f/%.1f ms\n",
