@@ -445,8 +445,11 @@ int main (int argc, char **argv)
 
 		st.st_size = get_device_size(fd);
 
-		fstype = "block";
-		device = "device";
+		fstype = "block device";
+		device = malloc(32);
+		if (!device)
+			err(2, "no mem");
+		snprintf(device, 32, "%.1f Gb", (double)st.st_size/(1ll<<30));
 	} else {
 		errx(2, "unsupported destination: \"%s\"", path);
 	}
