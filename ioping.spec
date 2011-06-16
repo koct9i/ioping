@@ -1,5 +1,5 @@
 Name:		ioping
-Version:	0.4
+Version:	0.5
 Release:	1%{?dist}
 Summary:	simple disk I/O latency monitoring tool
 
@@ -39,6 +39,13 @@ rm -rf $RPM_BUILD_ROOT
 %doc
 
 %changelog
+* Thu Jun  16 2011 Konstantin Khlebnikov <koct9i@gmail.com> - 0.5-1
+- rate tests
+- freebsd and macosx ports
+
+* Thu Jun  2 2011 Konstantin Khlebnikov <koct9i@gmail.com> - 0.4-1
+- fix linking
+
 * Thu Jun  2 2011 Kir Kolyshkin <kir@openvz.org> - 0.3-1
 - fix i386 build on x86_64
 
