@@ -102,8 +102,14 @@ void usage(void)
 			"      -R              seek rate test (same as -q -i 0 -w 3)\n"
 			"      -q              suppress human-readable output\n"
 			"      -h              display this message and exit\n"
+			"      -v              display version and exit\n"
 			"\n"
 	       );
+}
+
+void version(void)
+{
+	fprintf(stderr, "ioping %s\n", VERSION);
 }
 
 struct suffix {
@@ -246,10 +252,13 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hLRDCqi:w:s:S:c:o:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvLRDCqi:w:s:S:c:o:p:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
+				exit(0);
+			case 'v':
+				version();
 				exit(0);
 			case 'L':
 				randomize = 0;

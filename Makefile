@@ -27,7 +27,7 @@ install: $(BINS) $(MANS)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $^
+	$(CC) $(CFLAGS) -DVERSION=\"${VERSION}\" -c -o $@ $^
 
 ioping: $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
