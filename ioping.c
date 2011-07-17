@@ -39,7 +39,7 @@
 
 #ifdef __linux__
 # define HAVE_POSIX_FADVICE
-# define HAVE_POSIX_MEMALLIGN
+# define HAVE_POSIX_MEMALIGN
 #endif
 
 #ifdef __FreeBSD__
@@ -66,7 +66,7 @@ int posix_fadvise(int fd, off_t offset, off_t len, int advice)
 }
 #endif
 
-#ifndef HAVE_POSIX_MEMALLIGN
+#ifndef HAVE_POSIX_MEMALIGN
 /* don't free it */
 int posix_memalign(void **memptr, size_t alignment, size_t size)
 {
