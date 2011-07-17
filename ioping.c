@@ -96,7 +96,7 @@ void usage(void)
 			"      -L              use sequential operations rather than random\n"
 			"      -C              use cached-io\n"
 			"      -D              use direct-io\n"
-			"      -R              rate-test, implies: -q -i 0 -w 3\n"
+			"      -R              seek rate test (same as -q -i 0 -w 3)\n"
 			"      -q              suppress human-readable output\n"
 			"      -h              display this message and exit\n"
 			"\n"
