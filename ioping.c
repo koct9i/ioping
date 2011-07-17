@@ -82,8 +82,9 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-LCDRhq] [-c count] [-w deadline] [-p period] [-i interval]\n"
+			" Usage: ioping [-LCDRq] [-c count] [-w deadline] [-p period] [-i interval]\n"
 			"               [-s size] [-S wsize] [-o offset] device|file|directory\n"
+			"        ioping -h\n"
 			"\n"
 			"      -c <count>      stop after <count> requests\n"
 			"      -w <deadline>   stop after <deadline>\n"
@@ -96,8 +97,8 @@ void usage(void)
 			"      -C              use cached-io\n"
 			"      -D              use direct-io\n"
 			"      -R              rate-test, implies: -q -i 0 -w 3\n"
-			"      -h              display this message and exit\n"
 			"      -q              suppress human-readable output\n"
+			"      -h              display this message and exit\n"
 			"\n"
 	       );
 }

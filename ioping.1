@@ -3,7 +3,7 @@
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
-.OP \-LCDRhq
+.OP \-LCDRq
 .OP \-c count
 .OP \-w deadline
 .OP \-p period
@@ -12,6 +12,9 @@ ioping \- simple disk I/O latency monitoring tool
 .OP \-S wsize
 .OP \-o offset
 .IR device | file | directory
+.YS
+.SY ioping
+.B -h
 .YS
 .SH DESCRIPTION
 This tool lets you monitor I/O latency in real time.
@@ -50,11 +53,11 @@ Use direct I/O.
 .B \-R
 Disk seek rate test, implies \fB-q -i 0 -w 3\fR flags.
 .TP
-.B \-h
-Display help message and exit.
-.TP
 .B \-q
 Suppress human-readable output.
+.TP
+.B \-h
+Display help message and exit.
 .SS Argument suffixes
 For options that expect time argument (\fB\-i\fR and \fB\-w\fR),
 default is seconds, unless you specify one of the following suffixes
