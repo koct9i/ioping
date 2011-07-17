@@ -1,85 +1,94 @@
-.TH IOPING "1" "May 2011" "" "User Commands"
+.TH IOPING "1" "June 2011" "" "User Commands"
 .SH NAME
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
-\fBioping\fR [\fB\-LCDRhq\fR] [\fB\-c \fIcount\fR] [\fB\-w \fIdeadline\fR] \
- [\fB\-p \fIperiod\fR] [\fB\-i \fIinterval\fR] [\fB\-s \fIsize\fR] \
- [\fB\-S \fIwsize\fR] [\fB\-o \fIoffset\fR] \
- \fIdevice\fR | \fIfile\fR | \fIdirectory\fR
+.SY ioping
+.OP \-LCDRhq
+.OP \-c count
+.OP \-w deadline
+.OP \-p period
+.OP \-i interval
+.OP \-s size
+.OP \-S wsize
+.OP \-o offset
+.IR device | file | directory
+.YS
 .SH DESCRIPTION
 This tool lets you monitor I/O latency in real time.
 .SH OPTIONS
 .TP
-\fB\-c\fR \fIcount\fR
+.BI \-c \ count
 Stop after \fIcount\fR requests.
 .TP
-\fB\-w\fR \fIdeadline\fR
+.BI \-w \ deadline
 Stop after \fIdeadline\fR time passed.
 .TP
-\fB\-p\fR \fIperiod\fR
+.BI \-p \ period
 Print raw statistics for every \fIperiod\fR requests.
 .TP
-\fB\-i\fR \fIinterval\fR
+.BI \-i \ interval
 Set time between requests to \fIinterval\fR.
 .TP
-\fB\-s\fR \fIsize\fR
+.BI \-s \ size
 Request size.
 .TP
-\fB\-S\fR \fIwsize\fR
+.BI \-S \ size
 Working set size.
 .TP
-\fB\-o\fR \fIoffset\fR
+.BI \-o \ offset
 Offset in input file.
 .TP
-\fB\-L\fR
+.B \-L
 Use sequential operations rather than random.
 .TP
-\fB\-C\fR
+.B \-C
 Use cached I/O.
 .TP
-\fB\-D\fR
+.B \-D
 Use direct I/O.
 .TP
-\fB\-R\fR
-Rate-test, implies: -q -i 0 -w 3
+.B \-R
+Disk seek rate test, implies \fB-q -i 0 -w 3\fR flags.
 .TP
-\fB\-h\fR
+.B \-h
 Display help message and exit.
 .TP
-\fB\-q\fR
+.B \-q
 Suppress human-readable output.
 .SS Argument suffixes
-For options that expect time argument (\fB\-i\fR and \fB-w\fR),
-default is seconds, unless you specify one of the below suffixes:
+For options that expect time argument (\fB\-i\fR and \fB\-w\fR),
+default is seconds, unless you specify one of the following suffixes
+(case-insensitive):
 .TP
-\fBus\fR, \fBusec\fR
+.BR us ,\  usec
 microseconds
 .TP
-\fBms\fR, \fBmsec\fR
+.BR ms ,\  msec
 milliseconds
 .TP
-\fBs\fR, \fBsec\fR
+.BR s ,\  sec
 seconds
 .TP
-\fBm\fR, \fBmin\fR
+.BR m ,\  min
 minutes
 .TP
-\fBh\fR, \fBhour\fR
+.BR h ,\  hour
 hours
 .PP
-For options that expect "size" argument (\fB-s\fR, \fB-S\fR and \fB-o\fR),
-default is bytes, unless you specify one of the below suffixes:
+For options that expect "size" argument (\fB\-s\fR, \fB\-S\fR and \fB\-o\fR),
+default is bytes, unless you specify one of the following suffixes
+(case-insensitive):
 .TP
-\fBk\fR, \fBkb\fR
+.BR k ,\  kb
 kilobytes
 .TP
-\fBp\fR
-memory pages (page is always 4K).
+.B p
+memory pages (a page is always 4K).
 .TP
-\fBm\fR, \fBmb\fR
+.BR m ,\  mb
 megabytes
 .TP
-\fBg\fR, \fBgb\fR
+.BR g ,\  gb
 gigabytes
 .SH EXIT STATUS
 Returns \fB0\fR upon success. The following error codes are defined:
