@@ -618,7 +618,8 @@ int main (int argc, char **argv)
 
 	if (!quiet || !period) {
 		printf("\n--- %s ioping statistics ---\n", path);
-		printf("%d requests completed in %.1f ms, %.0f iops %.1f mb/s\n",
+		printf("%d requests completed in %.1f ms, "
+				"%.0f iops, %.1f mb/s\n",
 				request, time_total/1000.,
 				request * 1000000. / time_sum,
 				(double)request * size / time_sum /
