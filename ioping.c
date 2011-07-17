@@ -40,15 +40,18 @@
 #ifdef __linux__
 # define HAVE_POSIX_FADVICE
 # define HAVE_POSIX_MEMALIGN
+# define HAVE_DIRECT_IO
 #endif
 
 #ifdef __FreeBSD__
 # include <sys/disk.h>
+# define HAVE_NOCACHE_IO
 #endif
 
 #ifdef __APPLE__
 # include <sys/disk.h>
 # include <sys/uio.h>
+# define HAVE_NOCACHE_IO
 #endif
 
 #ifndef HAVE_POSIX_FADVICE
@@ -434,7 +437,8 @@ int main (int argc, char **argv)
 		errx(1, "request size must be greather than zero");
 
 	flags = O_RDONLY;
-#ifdef O_DIRECT
+
+#ifdef HAVE_DIRECT_IO
 	if (direct)
 		flags |= O_DIRECT;
 #endif
@@ -509,7 +513,7 @@ int main (int argc, char **argv)
 			err(2, "failed to open \"%s\"", path);
 	}
 
-#ifdef F_NOCACHE
+#ifdef HAVE_NOCACHE_IO
 	if (fcntl(fd, F_NOCACHE, direct))
 		err(2, "fcntl nocache failed");
 #endif
