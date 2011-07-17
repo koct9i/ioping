@@ -263,11 +263,11 @@ void parse_options(int argc, char **argv)
 			case 'L':
 				randomize = 0;
 				size = 1<<18;
-				temp_wsize = 1<<26;
 				break;
 			case 'R':
 				interval = 0;
 				deadline = 3000000;
+				temp_wsize = 1<<26;
 				quiet = 1;
 				break;
 			case 'D':

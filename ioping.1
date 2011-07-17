@@ -42,7 +42,7 @@ Working set size.
 Offset in input file.
 .TP
 .B \-L
-Use sequential operations rather than random.
+Use sequential operations rather than random (imply \fB-s 256k\fR).
 .TP
 .B \-C
 Use cached I/O.
@@ -51,7 +51,7 @@ Use cached I/O.
 Use direct I/O.
 .TP
 .B \-R
-Disk seek rate test (same as \fB-q -i 0 -w 3\fR).
+Disk seek rate test (same as \fB-q -i 0 -w 3 -S 64m\fR).
 .TP
 .B \-q
 Suppress human-readable output.
