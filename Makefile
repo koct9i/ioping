@@ -11,7 +11,7 @@ MANS=ioping.1
 SPEC=ioping.spec
 
 PACKAGE=ioping
-VERSION=$(shell awk '/^Version:/{print $$2}' $(SPEC))
+VERSION=$(shell test -d .git && git describe --tags --dirty=+ || awk '/^Version:/{print $$2}' $(SPEC))
 DISTDIR=$(PACKAGE)-$(VERSION)
 DISTFILES=$(SRCS) $(MANS) $(SPEC) Makefile
 
