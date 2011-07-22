@@ -458,8 +458,7 @@ int main (int argc, char **argv)
 	if (S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)) {
 		if (S_ISDIR(st.st_mode))
 			st.st_size = offset + temp_wsize;
-		if (!quiet)
-			parse_device(st.st_dev);
+		parse_device(st.st_dev);
 	} else if (S_ISBLK(st.st_mode)) {
 		fd = open(path, flags);
 		if (fd < 0)
@@ -630,7 +629,8 @@ int main (int argc, char **argv)
 	time_mdev = sqrt(time_sum2 / request - time_avg * time_avg);
 
 	if (!quiet || !period) {
-		printf("\n--- %s ioping statistics ---\n", path);
+		printf("\n--- %s (%s %s) ioping statistics ---\n",
+				path, fstype, device);
 		printf("%d requests completed in %.1f ms, "
 				"%.0f iops, %.1f mb/s\n",
 				request, time_total/1000.,
