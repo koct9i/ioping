@@ -43,7 +43,7 @@
 # define HAVE_DIRECT_IO
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 # include <sys/disk.h>
 # define HAVE_NOCACHE_IO
 #endif
@@ -341,7 +341,7 @@ out:
 	fclose(file);
 }
 
-#elif defined(__APPLE__) || defined(__FreeBSD__)
+#elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 
 void parse_device(dev_t dev)
 {
