@@ -232,8 +232,8 @@ long long interval = 1000000;
 long long deadline = 0;
 
 ssize_t size = 1<<12;
-ssize_t wsize = 0;
-ssize_t temp_wsize = 1<<20;
+off_t wsize = 0;
+off_t temp_wsize = 1<<20;
 
 off_t offset = 0;
 off_t woffset = 0;
