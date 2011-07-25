@@ -54,21 +54,6 @@
 # define HAVE_NOCACHE_IO
 #endif
 
-#ifndef HAVE_POSIX_FADVICE
-# define POSIX_FADV_RANDOM	0
-# define POSIX_FADV_DONTNEED	0
-int posix_fadvise(int fd, off_t offset, off_t len, int advice)
-{
-	(void)fd;
-	(void)offset;
-	(void)len;
-	(void)advice;
-
-	errno = ENOSYS;
-	return -1;
-}
-#endif
-
 #ifndef HAVE_POSIX_MEMALIGN
 /* don't free it */
 int posix_memalign(void **memptr, size_t alignment, size_t size)
@@ -432,11 +417,6 @@ int main (int argc, char **argv)
 
 	parse_options(argc, argv);
 
-#ifndef HAVE_POSIX_FADVICE
-	direct |= !cached;
-	cached = 1;
-#endif
-
 	if (wsize)
 		temp_wsize = wsize;
 	else if (size > temp_wsize)
@@ -447,9 +427,11 @@ int main (int argc, char **argv)
 
 	flags = O_RDONLY;
 
-#ifdef HAVE_DIRECT_IO
 	if (direct)
+#ifdef HAVE_DIRECT_IO
 		flags |= O_DIRECT;
+#else
+		errx(1, "direct-io does not supportted by this os");
 #endif
 
 	if (stat(path, &st))
@@ -521,15 +503,17 @@ int main (int argc, char **argv)
 			err(2, "failed to open \"%s\"", path);
 	}
 
-#ifdef HAVE_NOCACHE_IO
-	if (fcntl(fd, F_NOCACHE, direct))
-		err(2, "fcntl nocache failed");
-#endif
-
 	if (!cached) {
+#ifdef HAVE_POSIX_FADVICE
 		ret = posix_fadvise(fd, offset, wsize, POSIX_FADV_RANDOM);
 		if (ret)
 			err(2, "fadvise failed");
+#endif
+#ifdef HAVE_NOCACHE_IO
+		ret = fcntl(fd, F_NOCACHE, 1);
+		if (rer)
+			err(2, "fcntl nocache failed");
+#endif
 	}
 
 	srandom(now());
@@ -554,12 +538,14 @@ int main (int argc, char **argv)
 		if (randomize)
 			woffset = random() % (wsize / size) * size;
 
+#ifdef HAVE_POSIX_FADVICE
 		if (!cached) {
 			ret = posix_fadvise(fd, offset + woffset, size,
 					POSIX_FADV_DONTNEED);
 			if (ret)
 				err(3, "fadvise failed");
 		}
+#endif
 
 		this_time = now();
 		ret_size = pread(fd, buf, size, offset + woffset);
