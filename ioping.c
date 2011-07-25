@@ -34,21 +34,27 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include <sys/mount.h>
 #include <sys/ioctl.h>
 
 #ifdef __linux__
+# include <sys/mount.h>
 # define HAVE_POSIX_FADVICE
 # define HAVE_POSIX_MEMALIGN
 # define HAVE_DIRECT_IO
 #endif
 
+#ifdef __gnu_hurd__
+# define HAVE_POSIX_MEMALIGN
+#endif
+
 #if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+# include <sys/mount.h>
 # include <sys/disk.h>
 # define HAVE_NOCACHE_IO
 #endif
 
 #ifdef __APPLE__
+# include <sys/mount.h>
 # include <sys/disk.h>
 # include <sys/uio.h>
 # define HAVE_NOCACHE_IO
@@ -364,10 +370,12 @@ void parse_device(dev_t dev)
 
 #endif
 
-off_t get_device_size(int fd)
+off_t get_device_size(int fd, struct stat *st)
 {
 	unsigned long long blksize = 0;
-	int ret;
+	int ret = 0;
+	(void)fd;
+	(void)st;
 
 #if defined(BLKGETSIZE64)
 	/* linux */
@@ -379,6 +387,9 @@ off_t get_device_size(int fd)
 	/* macos */
 	ret = ioctl(fd, DKIOCGETBLOCKCOUNT, &blksize);
 	blksize <<= 9;
+#elif defined(__gnu_hurd__)
+	/* hurd */
+	blksize = st->st_size;
 #else
 # error no get disk size method
 #endif
@@ -446,7 +457,7 @@ int main (int argc, char **argv)
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
 
-		st.st_size = get_device_size(fd);
+		st.st_size = get_device_size(fd, &st);
 
 		fstype = "block device";
 		device = malloc(32);
