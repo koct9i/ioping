@@ -87,7 +87,7 @@ void usage(void)
 			"      -s <size>       request size (4k)\n"
 			"      -S <wsize>      working set size (1m)\n"
 			"      -o <offset>     in file offset\n"
-			"      -L              use sequential operations (include -s 256k)\n"
+			"      -L              use sequential operations (includes -s 256k)\n"
 			"      -C              use cached I/O\n"
 			"      -D              use direct I/O\n"
 			"      -R              seek rate test (same as -q -i 0 -w 3 -S 64m)\n"
