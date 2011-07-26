@@ -50,7 +50,7 @@
 #if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 # include <sys/mount.h>
 # include <sys/disk.h>
-# define HAVE_NOCACHE_IO
+# define HAVE_DIRECT_IO
 #endif
 
 #ifdef __APPLE__
@@ -452,14 +452,14 @@ int main (int argc, char **argv)
 		if (S_ISDIR(st.st_mode))
 			st.st_size = offset + temp_wsize;
 		parse_device(st.st_dev);
-	} else if (S_ISBLK(st.st_mode)) {
+	} else if (S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode)) {
 		fd = open(path, flags);
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
 
 		st.st_size = get_device_size(fd, &st);
 
-		fstype = "block device";
+		fstype = "device";
 		device = malloc(32);
 		if (!device)
 			err(2, "no mem");
