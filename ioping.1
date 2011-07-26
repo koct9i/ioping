@@ -42,7 +42,8 @@ Working set size (\fB1m\fR).
 Offset in input file.
 .TP
 .B \-L
-Use sequential operations rather than random (include \fB-s 256k\fR).
+Use sequential operations rather than random. This also sets request size
+to \fB256k\fR (as in \fB-s 256k\fR).
 .TP
 .B \-C
 Use cached I/O.
