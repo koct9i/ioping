@@ -522,7 +522,7 @@ int main (int argc, char **argv)
 #endif
 #ifdef HAVE_NOCACHE_IO
 		ret = fcntl(fd, F_NOCACHE, 1);
-		if (rer)
+		if (ret)
 			err(2, "fcntl nocache failed");
 #endif
 	}
