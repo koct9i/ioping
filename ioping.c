@@ -438,6 +438,11 @@ int main (int argc, char **argv)
 
 	flags = O_RDONLY;
 
+#if !defined(HAVE_POSIX_FADVICE) && !defined(HAVE_NOCACHE_IO) && \
+			defined(HAVE_DIRECT_IO)
+	direct |= !cached;
+#endif
+
 	if (direct)
 #ifdef HAVE_DIRECT_IO
 		flags |= O_DIRECT;
