@@ -88,8 +88,8 @@ void usage(void)
 			"      -S <wsize>      working set size (1m)\n"
 			"      -o <offset>     in file offset\n"
 			"      -L              use sequential operations (include -s 256k)\n"
-			"      -C              use cached-io\n"
-			"      -D              use direct-io\n"
+			"      -C              use cached I/O\n"
+			"      -D              use direct I/O\n"
 			"      -R              seek rate test (same as -q -i 0 -w 3 -S 64m)\n"
 			"      -q              suppress human-readable output\n"
 			"      -h              display this message and exit\n"
@@ -442,7 +442,7 @@ int main (int argc, char **argv)
 #ifdef HAVE_DIRECT_IO
 		flags |= O_DIRECT;
 #else
-		errx(1, "direct-io does not supportted by this os");
+		errx(1, "direct I/O not supportted by this platform");
 #endif
 
 	if (stat(path, &st))
