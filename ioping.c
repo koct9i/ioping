@@ -615,7 +615,8 @@ int main (int argc, char **argv)
 		if (deadline && now() + interval >= deadline)
 			break;
 
-		usleep(interval);
+		if (interval)
+			usleep(interval);
 	}
 
 	time_total = now() - time_total;
