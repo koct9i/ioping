@@ -446,7 +446,7 @@ static ssize_t aio_pread(int fd, void *buf, size_t nbytes, off_t offset)
 {
 	aio_cb.aio_lio_opcode = IOCB_CMD_PREAD;
 	aio_cb.aio_fildes = fd;
-	aio_cb.aio_buf = (unsigned long long) buf;
+	aio_cb.aio_buf = (unsigned long) buf;
 	aio_cb.aio_nbytes = nbytes;
 	aio_cb.aio_offset = offset;
 
