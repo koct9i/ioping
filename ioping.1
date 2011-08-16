@@ -3,7 +3,7 @@
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
-.OP \-LCDRq
+.OP \-LACDRq
 .OP \-c count
 .OP \-w deadline
 .OP \-p period
@@ -46,6 +46,9 @@ Offset in input file.
 .B \-L
 Use sequential operations rather than random. This also sets request size
 to \fB256k\fR (as in \fB-s 256k\fR).
+.TP
+.B \-A
+Use asynchronous I/O.
 .TP
 .B \-C
 Use cached I/O.

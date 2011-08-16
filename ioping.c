@@ -41,6 +41,7 @@
 # define HAVE_POSIX_FADVICE
 # define HAVE_POSIX_MEMALIGN
 # define HAVE_DIRECT_IO
+# define HAVE_LINUX_ASYNC_IO
 #endif
 
 #ifdef __gnu_hurd__
@@ -76,7 +77,7 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-LCDRq] [-c count] [-w deadline] [-p period] [-i interval]\n"
+			" Usage: ioping [-LACDRq] [-c count] [-w deadline] [-p period] [-i interval]\n"
 			"               [-s size] [-S wsize] [-o offset] device|file|directory\n"
 			"        ioping -h | -v\n"
 			"\n"
@@ -88,6 +89,7 @@ void usage(void)
 			"      -S <wsize>      working set size (1m)\n"
 			"      -o <offset>     in file offset\n"
 			"      -L              use sequential operations (includes -s 256k)\n"
+			"      -A              use asynchronous I/O\n"
 			"      -C              use cached I/O\n"
 			"      -D              use direct I/O\n"
 			"      -R              seek rate test (same as -q -i 0 -w 3 -S 64m)\n"
@@ -216,8 +218,11 @@ void *buf;
 int quiet = 0;
 int period = 0;
 int direct = 0;
+int async = 0;
 int cached = 0;
 int randomize = 1;
+
+ssize_t (*do_pread) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
 
 long long interval = 1000000;
 long long deadline = 0;
@@ -243,7 +248,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvLRDCqi:w:s:S:c:o:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvALRDCqi:w:s:S:c:o:p:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -266,6 +271,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'C':
 				cached = 1;
+				break;
+			case 'A':
+				async = 1;
 				break;
 			case 'i':
 				interval = parse_time(optarg);
@@ -400,6 +408,82 @@ off_t get_device_size(int fd, struct stat *st)
 	return blksize;
 }
 
+#ifdef HAVE_LINUX_ASYNC_IO
+
+#include <sys/syscall.h>
+#include <linux/aio_abi.h>
+
+static long io_setup(unsigned nr_reqs, aio_context_t *ctx) {
+	return syscall(__NR_io_setup, nr_reqs, ctx);
+}
+
+static long io_submit(aio_context_t ctx, long n, struct iocb **paiocb) {
+	return syscall(__NR_io_submit, ctx, n, paiocb);
+}
+
+static long io_getevents(aio_context_t ctx, long min_nr, long nr,
+		struct io_event *events, struct timespec *tmo) {
+	return syscall(__NR_io_getevents, ctx, min_nr, nr, events, tmo);
+}
+
+#if 0
+static long io_cancel(aio_context_t ctx, struct iocb *aiocb,
+		struct io_event *res) {
+	return syscall(__NR_io_cancel, ctx, aiocb, res);
+}
+
+static long io_destroy(aio_context_t ctx) {
+	return syscall(__NR_io_destroy, ctx);
+}
+#endif
+
+aio_context_t aio_ctx;
+struct iocb aio_cb;
+struct iocb *aio_cbp = &aio_cb;
+struct io_event aio_ev;
+
+static ssize_t aio_pread(int fd, void *buf, size_t nbytes, off_t offset)
+{
+	aio_cb.aio_lio_opcode = IOCB_CMD_PREAD;
+	aio_cb.aio_fildes = fd;
+	aio_cb.aio_buf = (unsigned long long) buf;
+	aio_cb.aio_nbytes = nbytes;
+	aio_cb.aio_offset = offset;
+
+	if (io_submit(aio_ctx, 1, &aio_cbp) != 1)
+		err(1, "aio submit failed");
+
+	if (io_getevents(aio_ctx, 1, 1, &aio_ev, NULL) != 1)
+		err(1, "aio getevents failed");
+
+	return aio_ev.res;
+}
+
+static void aio_setup(void)
+{
+	memset(&aio_ctx, 0, sizeof aio_ctx);
+	memset(&aio_cb, 0, sizeof aio_cb);
+
+	if (io_setup(1, &aio_ctx))
+		err(2, "aio setup failed");
+
+	do_pread = aio_pread;
+}
+
+#else
+
+static void aio_setup(void)
+{
+	errx(1, "asynchronous I/O not supportted by this platform");
+}
+
+static ssize_t aio_pread(int fd, void *buf, size_t nbytes, off_t offset)
+{
+	return -ENOSYS;
+}
+
+#endif
+
 void sig_exit(int signo)
 {
 	(void)signo;
@@ -442,6 +526,9 @@ int main (int argc, char **argv)
 			defined(HAVE_DIRECT_IO)
 	direct |= !cached;
 #endif
+
+	if (async)
+		aio_setup();
 
 	if (direct)
 #ifdef HAVE_DIRECT_IO
@@ -564,7 +651,7 @@ int main (int argc, char **argv)
 #endif
 
 		this_time = now();
-		ret_size = pread(fd, buf, size, offset + woffset);
+		ret_size = do_pread(fd, buf, size, offset + woffset);
 		if (ret_size < 0 && errno != EINTR)
 			err(3, "read failed");
 		this_time = now() - this_time;
