@@ -672,7 +672,10 @@ int main (int argc, char **argv)
 			part_avg = part_sum / period;
 			part_mdev = sqrt(part_sum2 / period - part_avg * part_avg);
 
-			printf("%lld %.0f %lld %.0f\n",
+			printf("%d %.0f %.0f %.0f %lld %.0f %lld %.0f\n",
+					period, part_sum,
+					1000000. * period / part_sum,
+					1000000. * period * size / part_sum,
 					part_min, part_avg,
 					part_max, part_mdev);
 

@@ -134,6 +134,30 @@ Error during preparation stage.
 .TP
 .B 3
 Error during runtime.
+.SH RAW STATISTICS
+.B ioping -p 100 -c 200 -i 0 -q .
+.YS
+100 26694 3746 15344272 188 267 1923 228
+.YS
+100 24165 4138 16950134 190 242 2348 214
+.YS
+(1) (2)   (3)  (4)      (5) (6) (7)  (8)
+.TP
+(1) numer of requests
+.YS
+(2) serving time         (usec)
+.YS
+(3) requests per second  (iops)
+.YS
+(4) transfer speed       (bytes/sec)
+.YS
+(5) minimal request time (usec)
+.YS
+(6) average request time (usec)
+.YS
+(7) maximum request time (usec)
+.YS
+(8) request time standard deviation (usec)
 .SH EXAMPLES
 .TP
 .B ioping .
