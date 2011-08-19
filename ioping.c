@@ -77,13 +77,14 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-LACDRq] [-c count] [-w deadline] [-p period] [-i interval]\n"
+			" Usage: ioping [-LACDRq] [-c count] [-w deadline] [-pP period] [-i interval]\n"
 			"               [-s size] [-S wsize] [-o offset] device|file|directory\n"
 			"        ioping -h | -v\n"
 			"\n"
 			"      -c <count>      stop after <count> requests\n"
 			"      -w <deadline>   stop after <deadline>\n"
 			"      -p <period>     print raw statistics for every <period> requests\n"
+			"      -P <period>     print raw statistics for every <period> in time\n"
 			"      -i <interval>   interval between requests (1s)\n"
 			"      -s <size>       request size (4k)\n"
 			"      -S <wsize>      working set size (1m)\n"
@@ -216,13 +217,15 @@ int fd;
 void *buf;
 
 int quiet = 0;
-int period = 0;
 int direct = 0;
 int async = 0;
 int cached = 0;
 int randomize = 1;
 
 ssize_t (*do_pread) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
+
+int period_request = 0;
+long long period_time = 0;
 
 long long interval = 1000000;
 long long deadline = 0;
@@ -248,7 +251,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvALRDCqi:w:s:S:c:o:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvALRDCqi:w:s:S:c:o:p:P:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -291,7 +294,10 @@ void parse_options(int argc, char **argv)
 				offset = parse_size(optarg);
 				break;
 			case 'p':
-				period = parse_int(optarg);
+				period_request = parse_int(optarg);
+				break;
+			case 'P':
+				period_time = parse_time(optarg);
 				break;
 			case 'q':
 				quiet = 1;
@@ -505,10 +511,12 @@ int main (int argc, char **argv)
 	struct stat st;
 	int ret, flags;
 
+	int part_request;
 	long long this_time, time_total;
 	long long part_min, part_max, time_min, time_max;
 	double time_sum, time_sum2, time_mdev, time_avg;
 	double part_sum, part_sum2, part_mdev, part_avg;
+	long long time_now, time_next, period_deadline;
 
 	parse_options(argc, argv);
 
@@ -629,14 +637,18 @@ int main (int argc, char **argv)
 	request = 0;
 	woffset = 0;
 
+	part_request = 0;
 	part_min = time_min = LLONG_MAX;
 	part_max = time_max = LLONG_MIN;
 	part_sum = time_sum = 0;
 	part_sum2 = time_sum2 = 0;
-	time_total = now();
+
+	time_now = now();
+	time_total = time_now;
+	period_deadline = time_now + period_time;
 
 	while (!exiting) {
-		request++;
+		part_request++;
 
 		if (randomize)
 			woffset = random() % (wsize / size) * size;
@@ -651,10 +663,14 @@ int main (int argc, char **argv)
 #endif
 
 		this_time = now();
+
 		ret_size = do_pread(fd, buf, size, offset + woffset);
 		if (ret_size < 0 && errno != EINTR)
 			err(3, "read failed");
-		this_time = now() - this_time;
+
+		time_now = now();
+		this_time = time_now - this_time;
+		time_next = time_now + interval;
 
 		part_sum += this_time;
 		part_sum2 += this_time * this_time;
@@ -666,21 +682,23 @@ int main (int argc, char **argv)
 		if (!quiet)
 			printf("%lld bytes from %s (%s %s): request=%d time=%.1f ms\n",
 					(long long)ret_size, path, fstype, device,
-					request, this_time / 1000.);
+					request + part_request, this_time / 1000.);
 
-		if (period && request % period == 0) {
-			part_avg = part_sum / period;
-			part_mdev = sqrt(part_sum2 / period - part_avg * part_avg);
+		if ((period_request && (part_request >= period_request)) ||
+		    (period_time && (time_next >= period_deadline))) {
+			part_avg = part_sum / part_request;
+			part_mdev = sqrt(part_sum2 / part_request - part_avg * part_avg);
 
 			printf("%d %.0f %.0f %.0f %lld %.0f %lld %.0f\n",
-					period, part_sum,
-					1000000. * period / part_sum,
-					1000000. * period * size / part_sum,
+					part_request, part_sum,
+					1000000. * part_request / part_sum,
+					1000000. * part_request * size / part_sum,
 					part_min, part_avg,
 					part_max, part_mdev);
 
 			time_sum += part_sum;
 			time_sum2 += part_sum2;
+			request += part_request;
 			if (part_min < time_min)
 				time_min = part_min;
 			if (part_max > time_max)
@@ -688,6 +706,10 @@ int main (int argc, char **argv)
 			part_min = LLONG_MAX;
 			part_max = LLONG_MIN;
 			part_sum = part_sum2 = 0;
+			part_request = 0;
+
+			while (period_time && time_next >= period_deadline)
+				period_deadline += period_time;
 		}
 
 		if (!randomize) {
@@ -702,7 +724,7 @@ int main (int argc, char **argv)
 		if (count && request >= count)
 			break;
 
-		if (deadline && now() + interval >= deadline)
+		if (deadline && time_next >= deadline)
 			break;
 
 		if (interval)
@@ -713,6 +735,7 @@ int main (int argc, char **argv)
 
 	time_sum += part_sum;
 	time_sum2 += part_sum2;
+	request += part_request;
 	if (part_min < time_min)
 		time_min = part_min;
 	if (part_max > time_max)
@@ -721,7 +744,7 @@ int main (int argc, char **argv)
 	time_avg = time_sum / request;
 	time_mdev = sqrt(time_sum2 / request - time_avg * time_avg);
 
-	if (!quiet || !period) {
+	if (!quiet || (!period_time && !period_request)) {
 		printf("\n--- %s (%s %s) ioping statistics ---\n",
 				path, fstype, device);
 		printf("%d requests completed in %.1f ms, "
