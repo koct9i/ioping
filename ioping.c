@@ -77,7 +77,7 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-LACDRq] [-c count] [-w deadline] [-pP period] [-i interval]\n"
+			" Usage: ioping [-LACDWRq] [-c count] [-w deadline] [-pP period] [-i interval]\n"
 			"               [-s size] [-S wsize] [-o offset] device|file|directory\n"
 			"        ioping -h | -v\n"
 			"\n"
@@ -93,6 +93,7 @@ void usage(void)
 			"      -A              use asynchronous I/O\n"
 			"      -C              use cached I/O\n"
 			"      -D              use direct I/O\n"
+			"      -W              use write I/O *DANGEROUS* require -WWW for non-directory\n"
 			"      -R              seek rate test (same as -q -i 0 -w 3 -S 64m)\n"
 			"      -q              suppress human-readable output\n"
 			"      -h              display this message and exit\n"
@@ -221,8 +222,9 @@ int direct = 0;
 int async = 0;
 int cached = 0;
 int randomize = 1;
+int write_test = 0;
 
-ssize_t (*do_pread) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
+ssize_t (*make_request) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
 
 int period_request = 0;
 long long period_time = 0;
@@ -251,7 +253,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvALRDCqi:w:s:S:c:o:p:P:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvALRDCWqi:w:s:S:c:o:p:P:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -277,6 +279,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'A':
 				async = 1;
+				break;
+			case 'W':
+				write_test++;
 				break;
 			case 'i':
 				interval = parse_time(optarg);
@@ -414,6 +419,18 @@ off_t get_device_size(int fd, struct stat *st)
 	return blksize;
 }
 
+ssize_t do_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
+{
+	ssize_t ret;
+
+	ret = pwrite(fd, buf, nbytes, offset);
+	if (ret < 0)
+		return ret;
+	if (!cached && fdatasync(fd) < 0)
+		return -1;
+	return ret;
+}
+
 #ifdef HAVE_LINUX_ASYNC_IO
 
 #include <sys/syscall.h>
@@ -465,6 +482,41 @@ static ssize_t aio_pread(int fd, void *buf, size_t nbytes, off_t offset)
 	return aio_ev.res;
 }
 
+static ssize_t aio_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
+{
+	aio_cb.aio_lio_opcode = IOCB_CMD_PWRITE;
+	aio_cb.aio_fildes = fd;
+	aio_cb.aio_buf = (unsigned long) buf;
+	aio_cb.aio_nbytes = nbytes;
+	aio_cb.aio_offset = offset;
+
+	if (io_submit(aio_ctx, 1, &aio_cbp) != 1)
+		err(1, "aio submit failed");
+
+	if (io_getevents(aio_ctx, 1, 1, &aio_ev, NULL) != 1)
+		err(1, "aio getevents failed");
+
+	if (aio_ev.res < 0)
+		return aio_ev.res;
+
+	if (!cached && fdatasync(fd) < 0)
+		return -1;
+
+	return aio_ev.res;
+
+#if 0
+	aio_cb.aio_lio_opcode = IOCB_CMD_FDSYNC;
+	if (io_submit(aio_ctx, 1, &aio_cbp) != 1)
+		err(1, "aio fdsync submit failed");
+
+	if (io_getevents(aio_ctx, 1, 1, &aio_ev, NULL) != 1)
+		err(1, "aio getevents failed");
+
+	if (aio_ev.res < 0)
+		return aio_ev.res;
+#endif
+}
+
 static void aio_setup(void)
 {
 	memset(&aio_ctx, 0, sizeof aio_ctx);
@@ -473,7 +525,7 @@ static void aio_setup(void)
 	if (io_setup(1, &aio_ctx))
 		err(2, "aio setup failed");
 
-	do_pread = aio_pread;
+	make_request = write_test ? aio_pwrite : aio_pread;
 }
 
 #else
@@ -535,6 +587,11 @@ int main (int argc, char **argv)
 	direct |= !cached;
 #endif
 
+	if (write_test) {
+		flags = O_RDWR;
+		make_request = do_pwrite;
+	}
+
 	if (async)
 		aio_setup();
 
@@ -547,6 +604,9 @@ int main (int argc, char **argv)
 
 	if (stat(path, &st))
 		err(2, "stat \"%s\" failed", path);
+
+	if (!S_ISDIR(st.st_mode) && write_test && write_test < 3)
+		errx(2, "think twice, then use -WWW to shred this target");
 
 	if (S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)) {
 		if (S_ISDIR(st.st_mode))
@@ -664,7 +724,7 @@ int main (int argc, char **argv)
 
 		this_time = now();
 
-		ret_size = do_pread(fd, buf, size, offset + woffset);
+		ret_size = make_request(fd, buf, size, offset + woffset);
 		if (ret_size < 0 && errno != EINTR)
 			err(3, "read failed");
 

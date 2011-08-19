@@ -3,7 +3,7 @@
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
-.OP \-LACDRq
+.OP \-LACDWRq
 .OP \-c count
 .OP \-w deadline
 .OP \-p period
@@ -59,6 +59,11 @@ Use cached I/O.
 .TP
 .B \-D
 Use direct I/O.
+.TP
+.B \-W
+Use writes rather than reads.
+\fB*DANGEROUS*\fR It will shred your data in non-directory targets,
+repeat key tree times (\fB-WWW\fR) to do this.
 .TP
 .B \-R
 Disk seek rate test (same as \fB-q -i 0 -w 3 -S 64m\fR).
