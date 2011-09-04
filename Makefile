@@ -11,11 +11,14 @@ MANS=ioping.1
 SPEC=ioping.spec
 
 PACKAGE=ioping
-VERSION=$(shell test -d .git && git describe --tags --dirty=+ || awk '/^Version:/{print $$2}' $(SPEC))
+VERSION=$(shell cat version)
 DISTDIR=$(PACKAGE)-$(VERSION)
 DISTFILES=$(SRCS) $(MANS) $(SPEC) Makefile
 
-all: $(BINS)
+all: version $(BINS)
+
+version: $(DISTFILES)
+	test ! -d .git || git describe --tags --dirty=+ | sed 's/^v//;s/-/./g' > $@
 
 clean:
 	$(RM) -f $(OBJS) $(BINS)
@@ -32,9 +35,7 @@ install: $(BINS) $(MANS)
 ioping: $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
-dist: $(DISTDIR).tar.gz
-
-$(DISTDIR).tar.gz: $(DISTFILES)
-	tar -cz --transform='s,^,$(DISTDIR)/,S' $(DISTFILES) -f $(DISTDIR).tar.gz
+dist: version $(DISTFILES)
+	tar -cz --transform='s,^,$(DISTDIR)/,S' $^ -f $(DISTDIR).tar.gz
 
 .PHONY: all clean install dist
