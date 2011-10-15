@@ -230,6 +230,7 @@ int period_request = 0;
 long long period_time = 0;
 
 long long interval = 1000000;
+struct timespec interval_ts;
 long long deadline = 0;
 
 ssize_t size = 1<<12;
@@ -572,6 +573,9 @@ int main (int argc, char **argv)
 
 	parse_options(argc, argv);
 
+	interval_ts.tv_sec = interval / 1000000;
+	interval_ts.tv_nsec = (interval % 1000000) * 1000;
+
 	if (wsize)
 		temp_wsize = wsize;
 	else if (size > temp_wsize)
@@ -788,7 +792,7 @@ int main (int argc, char **argv)
 			break;
 
 		if (interval)
-			usleep(interval);
+			nanosleep(&interval_ts, NULL);
 	}
 
 	time_total = now() - time_total;
