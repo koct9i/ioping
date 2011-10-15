@@ -708,6 +708,7 @@ int main (int argc, char **argv)
 	period_deadline = time_now + period_time;
 
 	while (!exiting) {
+		request++;
 		part_request++;
 
 		if (randomize)
@@ -742,7 +743,7 @@ int main (int argc, char **argv)
 		if (!quiet)
 			printf("%ld bytes from %s (%s %s): request=%d time=%.1f ms\n",
 					ret_size, path, fstype, device,
-					request + part_request, this_time / 1000.);
+					request, this_time / 1000.);
 
 		if ((period_request && (part_request >= period_request)) ||
 		    (period_time && (time_next >= period_deadline))) {
@@ -758,7 +759,6 @@ int main (int argc, char **argv)
 
 			time_sum += part_sum;
 			time_sum2 += part_sum2;
-			request += part_request;
 			if (part_min < time_min)
 				time_min = part_min;
 			if (part_max > time_max)
@@ -795,7 +795,6 @@ int main (int argc, char **argv)
 
 	time_sum += part_sum;
 	time_sum2 += part_sum2;
-	request += part_request;
 	if (part_min < time_min)
 		time_min = part_min;
 	if (part_max > time_max)
