@@ -559,13 +559,13 @@ void set_signal(int signo, void (*handler)(int))
 
 int main (int argc, char **argv)
 {
-	ssize_t ret_size;
+	long ret_size;
 	struct stat st;
 	int ret, flags;
 
 	int part_request;
 	long long this_time, time_total;
-	long long part_min, part_max, time_min, time_max;
+	double part_min, part_max, time_min, time_max;
 	double time_sum, time_sum2, time_mdev, time_avg;
 	double part_sum, part_sum2, part_mdev, part_avg;
 	long long time_now, time_next, period_deadline;
@@ -740,8 +740,8 @@ int main (int argc, char **argv)
 			part_max = this_time;
 
 		if (!quiet)
-			printf("%lld bytes from %s (%s %s): request=%d time=%.1f ms\n",
-					(long long)ret_size, path, fstype, device,
+			printf("%ld bytes from %s (%s %s): request=%d time=%.1f ms\n",
+					ret_size, path, fstype, device,
 					request + part_request, this_time / 1000.);
 
 		if ((period_request && (part_request >= period_request)) ||
@@ -749,7 +749,7 @@ int main (int argc, char **argv)
 			part_avg = part_sum / part_request;
 			part_mdev = sqrt(part_sum2 / part_request - part_avg * part_avg);
 
-			printf("%d %.0f %.0f %.0f %lld %.0f %lld %.0f\n",
+			printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
 					part_request, part_sum,
 					1000000. * part_request / part_sum,
 					1000000. * part_request * size / part_sum,
