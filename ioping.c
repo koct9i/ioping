@@ -28,38 +28,150 @@
 #include <fcntl.h>
 #include <time.h>
 #include <math.h>
-#include <err.h>
 #include <limits.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include <sys/ioctl.h>
 
 #ifdef __linux__
+# include <sys/ioctl.h>
 # include <sys/mount.h>
 # define HAVE_POSIX_FADVICE
 # define HAVE_POSIX_MEMALIGN
 # define HAVE_DIRECT_IO
 # define HAVE_LINUX_ASYNC_IO
+# define HAVE_ERR_INCLUDE
 #endif
 
 #ifdef __gnu_hurd__
+# include <sys/ioctl.h>
 # define HAVE_POSIX_MEMALIGN
+# define HAVE_ERR_INCLUDE
 #endif
 
 #if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+# include <sys/ioctl.h>
 # include <sys/mount.h>
 # include <sys/disk.h>
 # define HAVE_DIRECT_IO
+# define HAVE_ERR_INCLUDE
 #endif
 
 #ifdef __APPLE__
+# include <sys/ioctl.h>
 # include <sys/mount.h>
 # include <sys/disk.h>
 # include <sys/uio.h>
 # define HAVE_NOCACHE_IO
+# define HAVE_ERR_INCLUDE
 #endif
+
+#ifdef HAVE_ERR_INCLUDE
+# include <err.h>
+#else
+
+#define ERR_PREFIX "ioping: "
+
+void err(int eval, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	fprintf(stderr, ERR_PREFIX);
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, ": %s\n", strerror(errno));
+	va_end(ap);
+	exit(eval);
+}
+
+void errx(int eval, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	fprintf(stderr, ERR_PREFIX);
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+	va_end(ap);
+	exit(eval);
+}
+
+void warn(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	fprintf(stderr, ERR_PREFIX);
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+	va_end(ap);
+}
+
+#endif /* HAVE_ERR_INCLUDE */
+
+#ifdef __MINGW32__
+#include <io.h>
+#include <stdarg.h>
+#include <windows.h>
+
+ssize_t pread(int fd, void *buf, size_t count, off_t offset)
+{
+	HANDLE h = (HANDLE)_get_osfhandle(fd);
+	DWORD r;
+	OVERLAPPED o;
+
+	memset(&o, 0, sizeof(o));
+	o.Offset = offset;
+	o.OffsetHigh = offset >> 32;
+
+	if (ReadFile(h, buf, count, &r, &o))
+		return r;
+	return -1;
+}
+
+ssize_t pwrite(int fd, void *buf, size_t count, off_t offset)
+{
+	HANDLE h = (HANDLE)_get_osfhandle(fd);
+	DWORD r;
+	OVERLAPPED o;
+
+	memset(&o, 0, sizeof(o));
+	o.Offset = offset;
+	o.OffsetHigh = offset >> 32;
+
+	if (WriteFile(h, buf, count, &r, &o))
+		return r;
+	return -1;
+}
+
+int fsync(int fd)
+{
+	HANDLE h = (HANDLE)_get_osfhandle(fd);
+
+	return FlushFileBuffers(h) ? 0 : -1;
+}
+
+int fdatasync(int fd)
+{
+	return fsync(fd);
+}
+
+void srandom(unsigned int seed)
+{
+	srand(seed);
+}
+
+long int random(void)
+{
+	return rand();
+}
+
+int nanosleep(const struct timespec *req, struct timespec *rem)
+{
+	(void)rem;
+	Sleep(req->tv_sec * 1000 + req->tv_nsec / 1000000);
+	return 0;
+}
+
+#endif /* __MINGW32__ */
 
 #ifndef HAVE_POSIX_MEMALIGN
 /* don't free it */
@@ -416,6 +528,8 @@ off_t get_device_size(int fd, struct stat *st)
 #elif defined(__gnu_hurd__)
 	/* hurd */
 	blksize = st->st_size;
+#elif defined(__MINGW32__)
+	blksize = 0;
 #else
 # error no get disk size method
 #endif
@@ -542,27 +656,99 @@ static void aio_setup(void)
 	errx(1, "asynchronous I/O not supportted by this platform");
 }
 
-static ssize_t aio_pread(int fd, void *buf, size_t nbytes, off_t offset)
+#endif
+
+#ifdef __MINGW32__
+
+int create_temp(char *path, char *template)
 {
-	return -ENOSYS;
+	char *temp = malloc(strlen(path) + strlen(template) + 2);
+	HANDLE h;
+	DWORD attr;
+
+	if (!temp)
+		err(2, NULL);
+	sprintf(temp, "%s\\%s", path, template);
+	mktemp(temp);
+
+	attr = FILE_ATTRIBUTE_HIDDEN | FILE_FLAG_DELETE_ON_CLOSE;
+	if (!cached)
+		attr |= FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH;
+	if (randomize)
+		attr |= FILE_FLAG_RANDOM_ACCESS;
+	else
+		attr |= FILE_FLAG_SEQUENTIAL_SCAN;
+
+	h = CreateFile(temp, GENERIC_READ | GENERIC_WRITE,
+			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+			NULL, CREATE_ALWAYS, attr, NULL);
+
+	free(temp);
+	if (h == INVALID_HANDLE_VALUE)
+		return -1;
+	return _open_osfhandle((long)h, 0);
 }
 
-#endif
+BOOL WINAPI sig_exit(DWORD type)
+{
+	switch (type) {
+		case CTRL_C_EVENT:
+			if (exiting)
+				exit(4);
+			exiting = 1;
+			return TRUE;
+		default:
+			return FALSE;
+	}
+}
+
+void set_signal(void)
+{
+	SetConsoleCtrlHandler(sig_exit, TRUE);
+}
+
+#else /* __MINGW32__ */
+
+int create_temp(char *path, char *template)
+{
+	char *temp = malloc(strlen(path) + strlen(template) + 2);
+	int fd;
+
+	if (!temp)
+		err(2, NULL);
+	sprintf(temp, "%s/%s", path, template);
+
+	fd = mkstemp(temp);
+	if (fd < 0)
+		err(2, "failed to create temporary file at \"%s\"", path);
+	if (unlink(temp))
+		err(2, "unlink \"%s\" failed", temp);
+	free(temp);
+# ifdef HAVE_DIRECT_IO
+	if (direct && fcntl(fd, F_SETFL, O_DIRECT))
+		errx(2, "fcntl failed, please retry without -D");
+# endif
+	return fd;
+}
 
 void sig_exit(int signo)
 {
 	(void)signo;
+	if (exiting)
+		exit(4);
 	exiting = 1;
 }
 
-void set_signal(int signo, void (*handler)(int))
+void set_signal(void)
 {
 	struct sigaction sa;
 
 	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = handler;
-	sigaction(signo, &sa, NULL);
+	sa.sa_handler = sig_exit;
+	sigaction(SIGINT, &sa, NULL);
 }
+
+#endif /* __MINGW32__ */
 
 int main (int argc, char **argv)
 {
@@ -612,6 +798,10 @@ int main (int argc, char **argv)
 		errx(1, "direct I/O not supportted by this platform");
 #endif
 
+#ifdef __MINGW32__
+	flags |= O_BINARY;
+#endif
+
 	if (stat(path, &st))
 		err(2, "stat \"%s\" failed", path);
 
@@ -647,37 +837,19 @@ int main (int argc, char **argv)
 	if (size > wsize)
 		errx(2, "request size is too big for this target");
 
-	ret = posix_memalign(&buf, sysconf(_SC_PAGE_SIZE), size);
+	ret = posix_memalign(&buf, 0x1000, size);
 	if (ret)
 		errx(2, "buffer allocation failed");
 	memset(buf, '*', size);
 
 	if (S_ISDIR(st.st_mode)) {
-		char *tmpl = "/ioping.XXXXXX";
-		char *temp = malloc(strlen(path) + strlen(tmpl) + 1);
-
-		if (!temp)
-			err(2, NULL);
-		sprintf(temp, "%s%s", path, tmpl);
-		fd = mkstemp(temp);
-		if (fd < 0)
-			err(2, "failed to create temporary file at \"%s\"", path);
-		if (unlink(temp))
-			err(2, "unlink \"%s\" failed", temp);
-		if (fcntl(fd, F_SETFL, flags)) {
-			warn("fcntl failed");
-			if (direct)
-				errx(2, "please retry without -D");
-			errx(2, "it is so sad");
-		}
-
+		fd = create_temp(path, "ioping.XXXXXX");
 		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
 			if (pwrite(fd, buf, size, offset + woffset) != size)
 				err(2, "write failed");
 		}
 		if (fsync(fd))
 			err(2, "fsync failed");
-		free(temp);
 	} else if (S_ISREG(st.st_mode)) {
 		fd = open(path, flags);
 		if (fd < 0)
@@ -702,7 +874,7 @@ int main (int argc, char **argv)
 	if (deadline)
 		deadline += now();
 
-	set_signal(SIGINT, sig_exit);
+	set_signal();
 
 	request = 0;
 	woffset = 0;

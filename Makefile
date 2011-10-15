@@ -15,6 +15,11 @@ VERSION=$(shell cat version)
 DISTDIR=$(PACKAGE)-$(VERSION)
 DISTFILES=$(SRCS) $(MANS) $(SPEC) Makefile
 
+ifdef MINGW
+CC=i686-w64-mingw32-gcc
+BINS:=$(BINS:=.exe)
+endif
+
 all: version $(BINS)
 
 version: $(DISTFILES)
@@ -32,7 +37,7 @@ install: $(BINS) $(MANS)
 %.o: %.c
 	$(CC) $(CFLAGS) -DVERSION=\"${VERSION}\" -c -o $@ $^
 
-ioping: $(OBJS)
+$(BINS): $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 dist: version $(DISTFILES)
