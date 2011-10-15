@@ -1,4 +1,4 @@
-CFLAGS+=-std=c99 -g -Wall -Wextra -pedantic -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
+CFLAGS+=-std=gnu99 -g -Wall -Wextra -pedantic -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
 LDFLAGS=-lm
 PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
