@@ -15,8 +15,13 @@ VERSION=$(shell cat version)
 DISTDIR=$(PACKAGE)-$(VERSION)
 DISTFILES=$(SRCS) $(MANS) $(SPEC) Makefile
 
+STRIP=strip
+TARGET=$(shell ${CC} -dumpmachine | cut -d- -f 2)
+
 ifdef MINGW
 CC=i686-w64-mingw32-gcc
+STRIP=i686-w64-mingw32-strip
+TARGET=win32
 BINS:=$(BINS:=.exe)
 endif
 
@@ -42,5 +47,14 @@ $(BINS): $(OBJS)
 
 dist: version $(DISTFILES)
 	tar -cz --transform='s,^,$(DISTDIR)/,S' $^ -f $(DISTDIR).tar.gz
+
+binary-tar: clean all
+	${STRIP} ${BINS}
+	tar czf ${PACKAGE}-${VERSION}-${TARGET}.tgz ${BINS} ${MANS}
+
+binary-zip: clean all ${MANS}
+	${STRIP} ${BINS}
+	MANWIDTH=80 man ./${MANS} | col -b > ioping.txt
+	zip ${PACKAGE}-${VERSION}-${TARGET}.zip ${BINS} ioping.txt
 
 .PHONY: all clean install dist
