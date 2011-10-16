@@ -77,7 +77,7 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-LACDWRq] [-c count] [-w deadline] [-pP period] [-i interval]\n"
+			" Usage: ioping [-LABCDWRq] [-c count] [-w deadline] [-pP period] [-i interval]\n"
 			"               [-s size] [-S wsize] [-o offset] device|file|directory\n"
 			"        ioping -h | -v\n"
 			"\n"
@@ -95,6 +95,7 @@ void usage(void)
 			"      -D              use direct I/O\n"
 			"      -W              use write I/O *DANGEROUS* require -WWW for non-directory\n"
 			"      -R              seek rate test (same as -q -i 0 -w 3 -S 64m)\n"
+			"      -B              print final statistics in raw format\n"
 			"      -q              suppress human-readable output\n"
 			"      -h              display this message and exit\n"
 			"      -v              display version and exit\n"
@@ -218,6 +219,7 @@ int fd;
 void *buf;
 
 int quiet = 0;
+int batch_mode = 0;
 int direct = 0;
 int async = 0;
 int cached = 0;
@@ -254,7 +256,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvALRDCWqi:w:s:S:c:o:p:P:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvALRDCWBqi:w:s:S:c:o:p:P:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -307,6 +309,10 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'q':
 				quiet = 1;
+				break;
+			case 'B':
+				quiet = 1;
+				batch_mode = 1;
 				break;
 			case 'c':
 				count = parse_int(optarg);
@@ -807,7 +813,14 @@ int main (int argc, char **argv)
 	time_avg = time_sum / request;
 	time_mdev = sqrt(time_sum2 / request - time_avg * time_avg);
 
-	if (!quiet || (!period_time && !period_request)) {
+	if (batch_mode) {
+		printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
+				request, time_sum,
+				1000000. * request / time_sum,
+				1000000. * request * size / time_sum,
+				time_min, time_avg,
+				time_max, time_mdev);
+	} else if (!quiet || (!period_time && !period_request)) {
 		printf("\n--- %s (%s %s) ioping statistics ---\n",
 				path, fstype, device);
 		printf("%d requests completed in %.1f ms, "
