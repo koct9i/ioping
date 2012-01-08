@@ -959,8 +959,7 @@ int main (int argc, char **argv)
 			part_sum = part_sum2 = 0;
 			part_request = 0;
 
-			while (period_time && time_next >= period_deadline)
-				period_deadline += period_time;
+			period_deadline = time_now + period_time;
 		}
 
 		if (!randomize) {
