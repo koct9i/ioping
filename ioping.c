@@ -58,6 +58,11 @@
 # define HAVE_ERR_INCLUDE
 #endif
 
+#ifdef __DragonFly__
+# include <sys/diskslice.h>
+# define HAVE_ERR_INCLUDE
+#endif
+
 #ifdef __APPLE__
 # include <sys/ioctl.h>
 # include <sys/mount.h>
@@ -512,8 +517,6 @@ off_t get_device_size(int fd, struct stat *st)
 {
 	unsigned long long blksize = 0;
 	int ret = 0;
-	(void)fd;
-	(void)st;
 
 #if defined(BLKGETSIZE64)
 	/* linux */
@@ -530,9 +533,15 @@ off_t get_device_size(int fd, struct stat *st)
 	blksize = st->st_size;
 #elif defined(__MINGW32__)
 	blksize = 0;
+#elif defined(__DragonFly__)
+	struct partinfo pinfo;
+	ret = ioctl(fd, DIOCGPART, &pinfo);
+	blksize = pinfo.media_size;
 #else
 # error no get disk size method
 #endif
+	(void)fd;
+	(void)st;
 
 	if (ret)
 		err(2, "block get size ioctl failed");
