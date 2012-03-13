@@ -13,12 +13,12 @@ ioping \- simple disk I/O latency monitoring tool
 .OP \-S wsize
 .OP \-o offset
 .IR device | file | directory
-.YS
+.br
 .SY ioping
 .B -h
 |
 .B -v
-.YS
+.br
 .SH DESCRIPTION
 This tool lets you monitor I/O latency in real time.
 .SH OPTIONS
@@ -148,27 +148,30 @@ Error during preparation stage.
 Error during runtime.
 .SH RAW STATISTICS
 .B ioping -p 100 -c 200 -i 0 -q .
-.YS
-100 26694 3746 15344272 188 267 1923 228
-.YS
+.ad l
+.br
+\f(CW100 26694 3746 15344272 188 267 1923 228
+.br
 100 24165 4138 16950134 190 242 2348 214
-.YS
+.br
 (1) (2)   (3)  (4)      (5) (6) (7)  (8)
-.TP
+.br
+
+.br
 (1) number of requests
-.YS
+.br
 (2) serving time         (usec)
-.YS
+.br
 (3) requests per second  (iops)
-.YS
+.br
 (4) transfer speed       (bytes/sec)
-.YS
+.br
 (5) minimal request time (usec)
-.YS
+.br
 (6) average request time (usec)
-.YS
+.br
 (7) maximum request time (usec)
-.YS
+.br
 (8) request time standard deviation (usec)
 .SH EXAMPLES
 .TP
@@ -192,7 +195,7 @@ Homepage
 This program was written by Konstantin Khlebnikov
 .MT koct9i@gmail.com
 .ME .
-.YS
+.br
 Man-page was written by Kir Kolyshkin
 .MT kir@openvz.org
 .ME .
