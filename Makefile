@@ -42,6 +42,12 @@ install: $(BINS) $(MANS)
 %.o: %.c
 	$(CC) $(CFLAGS) -DVERSION=\"${VERSION}\" -c -o $@ $^
 
+%.ps: %.1
+	man -t ./$< > $@
+
+%.pdf: %.ps
+	ps2pdf $< $@
+
 $(BINS): $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
