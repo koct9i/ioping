@@ -609,6 +609,11 @@ static ssize_t aio_pread(int fd, void *buf, size_t nbytes, off_t offset)
 	if (io_getevents(aio_ctx, 1, 1, &aio_ev, NULL) != 1)
 		err(1, "aio getevents failed");
 
+	if (aio_ev.res < 0) {
+		errno = -aio_ev.res;
+		return -1;
+	}
+
 	return aio_ev.res;
 }
 
@@ -626,8 +631,10 @@ static ssize_t aio_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
 	if (io_getevents(aio_ctx, 1, 1, &aio_ev, NULL) != 1)
 		err(1, "aio getevents failed");
 
-	if (aio_ev.res < 0)
-		return aio_ev.res;
+	if (aio_ev.res < 0) {
+		errno = -aio_ev.res;
+		return -1;
+	}
 
 	if (!cached && fdatasync(fd) < 0)
 		return -1;
@@ -918,7 +925,7 @@ int main (int argc, char **argv)
 
 		ret_size = make_request(fd, buf, size, offset + woffset);
 		if (ret_size < 0 && errno != EINTR)
-			err(3, "read failed");
+			err(3, "request failed");
 
 		time_now = now();
 		this_time = time_now - this_time;
