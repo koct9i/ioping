@@ -1,5 +1,5 @@
 CFLAGS+=-std=gnu99 -g -Wall -Wextra -pedantic -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
-LDFLAGS=-lm
+LIBS=-lm
 PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 MAN1DIR=$(PREFIX)/share/man/man1
@@ -38,7 +38,7 @@ clean:
 
 install: $(BINS) $(MANS)
 	mkdir -p $(DESTDIR)$(BINDIR)
-	install -m 0755 $(BINS) $(DESTDIR)$(BINDIR)
+	install -s -m 0755 $(BINS) $(DESTDIR)$(BINDIR)
 	mkdir -p $(DESTDIR)$(MAN1DIR)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
@@ -55,7 +55,7 @@ install: $(BINS) $(MANS)
 	MANWIDTH=80 man ./$< | col -b > $@
 
 $(BINS): $(OBJS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 dist: version $(DISTFILES)
 	tar -cz --transform='s,^,$(DISTDIR)/,S' $^ -f $(DISTDIR).tar.gz
