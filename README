@@ -1,0 +1,11 @@
+ioping
+======
+
+An tool to monitor I/O latency in real time.
+It shows disk latency in the same way as ping shows network latency.
+
+Authors:
+Konstantin Khlebnikov <koct9i@gmail.com>
+Kir Kolyshkin <kir@openvz.org>
+
+Licensed under GPLv3 (or later) <http://www.gnu.org/licenses/gpl-3.0.txt>

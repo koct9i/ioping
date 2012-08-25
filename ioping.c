@@ -195,7 +195,7 @@ void usage(void)
 {
 	fprintf(stderr,
 			" Usage: ioping [-LABCDWRq] [-c count] [-w deadline] [-pP period] [-i interval]\n"
-			"               [-s size] [-S wsize] [-o offset] device|file|directory\n"
+			"               [-s size] [-S wsize] [-o offset] directory|file|device\n"
 			"        ioping -h | -v\n"
 			"\n"
 			"      -c <count>      stop after <count> requests\n"
@@ -205,12 +205,12 @@ void usage(void)
 			"      -i <interval>   interval between requests (1s)\n"
 			"      -s <size>       request size (4k)\n"
 			"      -S <wsize>      working set size (1m)\n"
-			"      -o <offset>     in file offset\n"
+			"      -o <offset>     working set offset (0)\n"
 			"      -L              use sequential operations (includes -s 256k)\n"
 			"      -A              use asynchronous I/O\n"
 			"      -C              use cached I/O\n"
 			"      -D              use direct I/O\n"
-			"      -W              use write I/O *DANGEROUS* require -WWW for non-directory\n"
+			"      -W              use write I/O *DANGEROUS*\n"
 			"      -R              seek rate test (same as -q -i 0 -w 3 -S 64m)\n"
 			"      -B              print final statistics in raw format\n"
 			"      -q              suppress human-readable output\n"

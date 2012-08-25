@@ -8,12 +8,13 @@ SRCS=ioping.c
 OBJS=$(SRCS:.c=.o)
 BINS=ioping
 MANS=ioping.1
+DOCS=README changelog
 SPEC=ioping.spec
 
 PACKAGE=ioping
 VERSION=$(shell cat version)
 DISTDIR=$(PACKAGE)-$(VERSION)
-DISTFILES=$(SRCS) $(MANS) $(SPEC) Makefile
+DISTFILES=$(SRCS) $(MANS) $(DOCS) $(SPEC) Makefile
 
 STRIP=strip
 TARGET=$(shell ${CC} -dumpmachine | cut -d- -f 2)

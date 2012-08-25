@@ -1,0 +1,19 @@
+since v0.4
+ - rate-test, new key -R
+ - FreeBSD port
+ - OSX port
+
+since v0.5
+ - fixes in man page and internal help
+ - fixes in OSX and FreeBSD ports
+ - Debian/kFreeBSD port
+ - Debian/HURD port
+
+since v0.6
+ - Linux AIO support, new key -A
+ - extended raw statistics, keys -p -P
+ - batched mode, new key -B
+ - write requests, key -W
+ - automatic git-based versioning
+ - Windows/MinGW port
+ - DragonFlyBSD port
