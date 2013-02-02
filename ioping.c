@@ -230,6 +230,58 @@ struct suffix {
 	long long	mul;
 };
 
+static struct suffix int_suffix[] = {
+	{ "T",		1000000000000ll },
+	{ "G",		1000000000ll },
+	{ "M",		1000000ll },
+	{ "k",		1000ll },
+	{ "",		1ll },
+	{ "da",		10ll },
+	{ "P",		1000000000000000ll },
+	{ "E",		1000000000000000000ll },
+	{ NULL,		0ll },
+};
+
+static struct suffix size_suffix[] = {
+	{ "tb",		1ll<<40 },
+	{ "gb",		1ll<<30 },
+	{ "mb",		1ll<<20 },
+	{ "kb",		1ll<<10 },
+	{ "b",		1 },
+	{ "",		1 },
+	{ "k",		1ll<<10 },
+	{ "p",		1ll<<12 },
+	{ "m",		1ll<<20 },
+	{ "g",		1ll<<30 },
+	{ "t",		1ll<<40 },
+	{ "p",		1ll<<50 },
+	{ "pb",		1ll<<50 },
+	{ "e",		1ll<<60 },
+	{ "eb",		1ll<<60 },
+	{ NULL,		0ll },
+};
+
+static struct suffix time_suffix[] = {
+	{ "day",	1000000ll * 60 * 60 * 24 },
+	{ "hour",	1000000ll * 60 * 60 },
+	{ "min",	1000000ll * 60 },
+	{ "s",		1000000ll },
+	{ "ms",		1000ll },
+	{ "us",		1ll },
+	{ "usec",	1ll },
+	{ "msec",	1000ll },
+	{ "",		1000000ll },
+	{ "sec",	1000000ll },
+	{ "m",		1000000ll * 60 },
+	{ "h",		1000000ll * 60 * 60 },
+	{ "week",	1000000ll * 60 * 60 * 24 * 7 },
+	{ "month",	1000000ll * 60 * 60 * 24 * 7 * 30 },
+	{ "year",	1000000ll * 60 * 60 * 24 * 7 * 365 },
+	{ "century",	1000000ll * 60 * 60 * 24 * 7 * 365 * 100 },
+	{ "millenium",	1000000ll * 60 * 60 * 24 * 7 * 365 * 1000 },
+	{ NULL,		0ll },
+};
+
 long long parse_suffix(const char *str, struct suffix *sfx)
 {
 	char *end;
@@ -246,76 +298,44 @@ long long parse_suffix(const char *str, struct suffix *sfx)
 
 long long parse_int(const char *str)
 {
-	static struct suffix sfx[] = {
-		{ "",		1ll },
-		{ "da",		10ll },
-		{ "k",		1000ll },
-		{ "M",		1000000ll },
-		{ "G",		1000000000ll },
-		{ "T",		1000000000000ll },
-		{ "P",		1000000000000000ll },
-		{ "E",		1000000000000000000ll },
-		{ NULL,		0ll },
-	};
-
-	return parse_suffix(str, sfx);
+	return parse_suffix(str, int_suffix);
 }
 
 long long parse_size(const char *str)
 {
-	static struct suffix sfx[] = {
-		{ "",		1 },
-		{ "b",		1 },
-		{ "s",		1ll<<9 },
-		{ "k",		1ll<<10 },
-		{ "kb",		1ll<<10 },
-		{ "p",		1ll<<12 },
-		{ "m",		1ll<<20 },
-		{ "mb",		1ll<<20 },
-		{ "g",		1ll<<30 },
-		{ "gb",		1ll<<30 },
-		{ "t",		1ll<<40 },
-		{ "tb",		1ll<<40 },
-		{ "p",		1ll<<50 },
-		{ "pb",		1ll<<50 },
-		{ "e",		1ll<<60 },
-		{ "eb",		1ll<<60 },
-/*
-		{ "z",		1ll<<70 },
-		{ "zb",		1ll<<70 },
-		{ "y",		1ll<<80 },
-		{ "yb",		1ll<<80 },
-*/
-		{ NULL,		0ll },
-	};
-
-	return parse_suffix(str, sfx);
+	return parse_suffix(str, size_suffix);
 }
 
 long long parse_time(const char *str)
 {
-	static struct suffix sfx[] = {
-		{ "us",		1ll },
-		{ "usec",	1ll },
-		{ "ms",		1000ll },
-		{ "msec",	1000ll },
-		{ "",		1000000ll },
-		{ "s",		1000000ll },
-		{ "sec",	1000000ll },
-		{ "m",		1000000ll * 60 },
-		{ "min",	1000000ll * 60 },
-		{ "h",		1000000ll * 60 * 60 },
-		{ "hour",	1000000ll * 60 * 60 },
-		{ "day",	1000000ll * 60 * 60 * 24 },
-		{ "week",	1000000ll * 60 * 60 * 24 * 7 },
-		{ "month",	1000000ll * 60 * 60 * 24 * 7 * 30 },
-		{ "year",	1000000ll * 60 * 60 * 24 * 7 * 365 },
-		{ "century",	1000000ll * 60 * 60 * 24 * 7 * 365 * 100 },
-		{ "millenium",	1000000ll * 60 * 60 * 24 * 7 * 365 * 1000 },
-		{ NULL,		0ll },
-	};
+	return parse_suffix(str, time_suffix);
+}
 
-	return parse_suffix(str, sfx);
+void print_suffix(long long val, struct suffix *sfx)
+{
+	while (val < sfx->mul && sfx->mul > 1)
+		sfx++;
+	if (sfx->mul == 1)
+		printf("%lld", val);
+	else
+		printf("%.1f", val * 1.0 / sfx->mul);
+	if (*sfx->txt)
+		printf(" %s", sfx->txt);
+}
+
+void print_int(long long val)
+{
+	print_suffix(val, int_suffix);
+}
+
+void print_size(long long val)
+{
+	print_suffix(val, size_suffix);
+}
+
+void print_time(long long val)
+{
+	print_suffix(val, time_suffix);
 }
 
 long long now(void)
@@ -938,10 +958,13 @@ int main (int argc, char **argv)
 		if (this_time > part_max)
 			part_max = this_time;
 
-		if (!quiet)
-			printf("%ld bytes from %s (%s %s): request=%d time=%.1f ms\n",
-					ret_size, path, fstype, device,
-					request, this_time / 1000.);
+		if (!quiet) {
+			print_size(ret_size);
+			printf(" from %s (%s %s): request=%d time=",
+					path, fstype, device, request);
+			print_time(this_time);
+			printf("\n");
+		}
 
 		if ((period_request && (part_request >= period_request)) ||
 		    (period_time && (time_next >= period_deadline))) {
@@ -1010,15 +1033,23 @@ int main (int argc, char **argv)
 	} else if (!quiet || (!period_time && !period_request)) {
 		printf("\n--- %s (%s %s) ioping statistics ---\n",
 				path, fstype, device);
-		printf("%d requests completed in %.1f ms, "
-				"%.0f iops, %.1f mb/s\n",
-				request, time_total/1000.,
-				request * 1000000. / time_sum,
-				(double)request * size / time_sum /
-				(1<<20) * 1000000);
-		printf("min/avg/max/mdev = %.1f/%.1f/%.1f/%.1f ms\n",
-				time_min/1000., time_avg/1000.,
-				time_max/1000., time_mdev/1000.);
+		print_int(request);
+		printf(" requests completed in ");
+		print_time(time_total);
+		printf(", ");
+		print_int(request * 1000000. / time_sum);
+		printf(" iops, ");
+		print_size(request * size * 1000000. / time_sum);
+		printf("/s\n");
+		printf("min/avg/max/mdev = ");
+		print_time(time_min);
+		printf(" / ");
+		print_time(time_avg);
+		printf(" / ");
+		print_time(time_max);
+		printf(" / ");
+		print_time(time_mdev);
+		printf("\n");
 	}
 
 	return 0;
