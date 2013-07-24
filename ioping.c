@@ -72,6 +72,10 @@
 # define HAVE_ERR_INCLUDE
 #endif
 
+#if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
+# define HAVE_POSIX_FDATASYNC
+#endif
+
 #ifdef HAVE_ERR_INCLUDE
 # include <err.h>
 #else
@@ -154,11 +158,6 @@ int fsync(int fd)
 	return FlushFileBuffers(h) ? 0 : -1;
 }
 
-int fdatasync(int fd)
-{
-	return fsync(fd);
-}
-
 void srandom(unsigned int seed)
 {
 	srand(seed);
@@ -188,6 +187,13 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 		return -ENOMEM;
 	*memptr = ptr + alignment - (size_t)ptr % alignment;
 	return 0;
+}
+#endif
+
+#ifndef HAVE_POSIX_FDATASYNC
+int fdatasync(int fd)
+{
+	return fsync(fd);
 }
 #endif
 
