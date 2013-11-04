@@ -63,6 +63,14 @@
 # define HAVE_ERR_INCLUDE
 #endif
 
+#ifdef __OpenBSD__
+# include <sys/ioctl.h>
+# include <sys/disklabel.h>
+# include <sys/dkio.h>
+# define HAVE_POSIX_MEMALIGN
+# define HAVE_ERR_INCLUDE
+#endif
+
 #ifdef __APPLE__
 # include <sys/ioctl.h>
 # include <sys/mount.h>
@@ -563,6 +571,10 @@ off_t get_device_size(int fd, struct stat *st)
 	struct partinfo pinfo;
 	ret = ioctl(fd, DIOCGPART, &pinfo);
 	blksize = pinfo.media_size;
+#elif defined(__OpenBSD__)
+	struct partinfo pinfo;
+	ret = ioctl(fd, DIOCGPART, &pinfo);
+	blksize = DL_GETPSIZE(pinfo.part) * pinfo.disklab->d_secsize;
 #else
 # error no get disk size method
 #endif
