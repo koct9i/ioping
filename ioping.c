@@ -67,6 +67,8 @@
 # include <sys/ioctl.h>
 # include <sys/disklabel.h>
 # include <sys/dkio.h>
+# include <sys/param.h>
+# include <sys/mount.h>
 # define HAVE_POSIX_MEMALIGN
 # define HAVE_ERR_INCLUDE
 #endif
@@ -524,7 +526,8 @@ out:
 	fclose(file);
 }
 
-#elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+#elif defined(__APPLE__) || defined(__OpenBSD__) \
+	|| defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 
 void parse_device(dev_t dev)
 {
@@ -572,9 +575,13 @@ off_t get_device_size(int fd, struct stat *st)
 	ret = ioctl(fd, DIOCGPART, &pinfo);
 	blksize = pinfo.media_size;
 #elif defined(__OpenBSD__)
-	struct partinfo pinfo;
-	ret = ioctl(fd, DIOCGPART, &pinfo);
-	blksize = DL_GETPSIZE(pinfo.part) * pinfo.disklab->d_secsize;
+	struct disklabel label;
+	struct partition part;
+
+	ret = ioctl(fd, DIOCGDINFO, &label);
+	part = label.d_partitions[DISKPART(st->st_rdev)];
+
+	blksize = DL_GETPSIZE(&part) * label.d_secsize;
 #else
 # error no get disk size method
 #endif
