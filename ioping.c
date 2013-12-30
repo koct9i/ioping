@@ -118,7 +118,7 @@ void errx(int eval, const char *fmt, ...)
 	exit(eval);
 }
 
-void warn(const char *fmt, ...)
+void warnx(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -856,9 +856,15 @@ int main (int argc, char **argv)
 
 	flags = O_RDONLY;
 
-#if !defined(HAVE_POSIX_FADVICE) && !defined(HAVE_NOCACHE_IO) && \
-			defined(HAVE_DIRECT_IO)
+#if !defined(HAVE_POSIX_FADVICE) && !defined(HAVE_NOCACHE_IO)
+# if defined(HAVE_DIRECT_IO)
 	direct |= !cached;
+# else
+	if (!cached)
+		warnx("non-cached I/O not supportted by this platform,"
+				" results will be unreliable.");
+	cached = 1;
+# endif
 #endif
 
 	if (write_test) {
