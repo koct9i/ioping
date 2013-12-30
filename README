@@ -4,6 +4,11 @@ ioping
 An tool to monitor I/O latency in real time.
 It shows disk latency in the same way as ping shows network latency.
 
+Homepage: http://code.google.com/p/ioping/
+
+Please send your patches, issues and questions to
+http://code.google.com/p/ioping/issues/
+
 Authors:
 Konstantin Khlebnikov <koct9i@gmail.com>
 Kir Kolyshkin <kir@openvz.org>
