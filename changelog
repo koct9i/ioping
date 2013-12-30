@@ -17,3 +17,7 @@ since v0.6
  - automatic git-based versioning
  - Windows/MinGW port
  - DragonFlyBSD port
+
+since v0.7
+ - OpenBSD port
+ - switch to IEEE 1541-2002 units: MiB/s
