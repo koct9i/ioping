@@ -738,13 +738,14 @@ static void aio_setup(void)
 
 int create_temp(char *path, char *template)
 {
-	char *temp = malloc(strlen(path) + strlen(template) + 2);
+	int length = strlen(path) + strlen(template) + 2;
+	char *temp = malloc(length);
 	HANDLE h;
 	DWORD attr;
 
 	if (!temp)
 		err(2, NULL);
-	sprintf(temp, "%s\\%s", path, template);
+	snprintf(temp, length, "%s\\%s", path, template);
 	mktemp(temp);
 
 	attr = FILE_ATTRIBUTE_HIDDEN | FILE_FLAG_DELETE_ON_CLOSE;
@@ -787,12 +788,13 @@ void set_signal(void)
 
 int create_temp(char *path, char *template)
 {
-	char *temp = malloc(strlen(path) + strlen(template) + 2);
+	int length = strlen(path) + strlen(template) + 2;
+	char *temp = malloc(length);
 	int fd;
 
 	if (!temp)
 		err(2, NULL);
-	sprintf(temp, "%s/%s", path, template);
+	snprintf(temp, length, "%s/%s", path, template);
 
 	fd = mkstemp(temp);
 	if (fd < 0)
