@@ -85,10 +85,10 @@ default is seconds, unless you specify one of the following suffixes
 (case-insensitive):
 .TP
 .BR us ,\  usec
-microseconds
+microseconds (a millionth of a second, 1 / 1 000 000)
 .TP
 .BR ms ,\  msec
-milliseconds
+milliseconds (a thousandth of a second, 1 / 1 000)
 .TP
 .BR s ,\  sec
 seconds
@@ -107,19 +107,19 @@ default is bytes, unless you specify one of the following suffixes
 disk sectors (a sector is always 512).
 .TP
 .BR KiB ,\  k ,\  kb
-kilobytes
+kilobytes (1 024 bytes)
 .TP
 .B page
 memory pages (a page is always 4KiB).
 .TP
 .BR MiB ,\  m ,\  mb
-megabytes
+megabytes (1 048 576 bytes)
 .TP
 .BR GiB ,\  g ,\  gb
-gigabytes
+gigabytes (1 073 741 824 bytes)
 .TP
 .BR TiB ,\  t ,\  tb
-terabytes
+terabytes (1 099 511 627 776 bytes)
 .PP
 For options that expect "number" argument (\fB-p\fR and \fB-c\fR) you
 can optionally specify one of the following suffixes (case-insensitive):
