@@ -259,21 +259,27 @@ static struct suffix int_suffix[] = {
 };
 
 static struct suffix size_suffix[] = {
-	{ "tb",		1ll<<40 },
-	{ "gb",		1ll<<30 },
-	{ "mb",		1ll<<20 },
-	{ "kb",		1ll<<10 },
-	{ "b",		1 },
+	/* These are first match for printing */
+	{ "PiB",	1ll<<50 },
+	{ "TiB",	1ll<<40 },
+	{ "GiB",	1ll<<30 },
+	{ "MiB",	1ll<<20 },
+	{ "KiB",	1ll<<10 },
+	{ "B",		1 },
 	{ "",		1 },
+	/* Should be decimal, keep binary for compatibility */
 	{ "k",		1ll<<10 },
-	{ "p",		1ll<<12 },
+	{ "kb",		1ll<<10 },
 	{ "m",		1ll<<20 },
+	{ "mb",		1ll<<20 },
 	{ "g",		1ll<<30 },
+	{ "gb",		1ll<<30 },
 	{ "t",		1ll<<40 },
-	{ "p",		1ll<<50 },
+	{ "tb",		1ll<<40 },
 	{ "pb",		1ll<<50 },
-	{ "e",		1ll<<60 },
 	{ "eb",		1ll<<60 },
+	{ "sector",	512 },
+	{ "page",	4096 },
 	{ NULL,		0ll },
 };
 
