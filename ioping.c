@@ -236,6 +236,11 @@ void usage(void)
 	       );
 }
 
+#ifndef VERSION
+# warning ioping version undefined
+# define VERSION ""
+#endif
+
 void version(void)
 {
 	fprintf(stderr, "ioping %s\n", VERSION);
