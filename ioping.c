@@ -382,6 +382,7 @@ long long now(void)
 char *path = NULL;
 char *fstype = "";
 char *device = "";
+off_t device_size = 0;
 
 int fd;
 void *buf;
@@ -901,13 +902,9 @@ int main (int argc, char **argv)
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
 
-		st.st_size = get_device_size(fd, &st);
-
+		device_size = get_device_size(fd, &st);
+		st.st_size = device_size;
 		fstype = "device";
-		device = malloc(32);
-		if (!device)
-			err(2, "no mem");
-		snprintf(device, 32, "%.1f Gb", (double)st.st_size/(1ll<<30));
 	} else {
 		errx(2, "unsupported destination: \"%s\"", path);
 	}
@@ -1008,8 +1005,10 @@ int main (int argc, char **argv)
 
 		if (!quiet) {
 			print_size(ret_size);
-			printf(" from %s (%s %s): request=%d time=",
-					path, fstype, device, request);
+			printf(" from %s (%s %s", path, fstype, device);
+			if (device_size)
+				print_size(device_size);
+			printf("): request=%d time=", request);
 			print_time(this_time);
 			printf("\n");
 		}
@@ -1079,8 +1078,10 @@ int main (int argc, char **argv)
 				time_min, time_avg,
 				time_max, time_mdev);
 	} else if (!quiet || (!period_time && !period_request)) {
-		printf("\n--- %s (%s %s) ioping statistics ---\n",
-				path, fstype, device);
+		printf("\n--- %s (%s %s", path, fstype, device);
+		if (device_size)
+			print_size(device_size);
+		printf(") ioping statistics ---\n");
 		print_int(request);
 		printf(" requests completed in ");
 		print_time(time_total);
