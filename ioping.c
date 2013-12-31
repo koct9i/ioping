@@ -730,7 +730,7 @@ static void aio_setup(void)
 
 static void aio_setup(void)
 {
-	errx(1, "asynchronous I/O not supportted by this platform");
+	errx(1, "asynchronous I/O not supported by this platform");
 }
 
 #endif
@@ -861,10 +861,11 @@ int main (int argc, char **argv)
 # if defined(HAVE_DIRECT_IO)
 	direct |= !cached;
 # else
-	if (!cached)
-		warnx("non-cached I/O not supportted by this platform,"
-				" results will be unreliable.");
-	cached = 1;
+	if (!cached && !write_test) {
+		warnx("non-cached read I/O not supported by this platform");
+		warnx("you can use write I/O to get reliable results");
+		cached = 1;
+	}
 # endif
 #endif
 
@@ -880,7 +881,7 @@ int main (int argc, char **argv)
 #ifdef HAVE_DIRECT_IO
 		flags |= O_DIRECT;
 #else
-		errx(1, "direct I/O not supportted by this platform");
+		errx(1, "direct I/O not supported by this platform");
 #endif
 
 #ifdef __MINGW32__
