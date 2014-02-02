@@ -3,7 +3,7 @@
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
-.OP \-LABCDWRq
+.OP \-LABCDWRkq
 .OP \-c count
 .OP \-w deadline
 .OP \-p period
@@ -46,6 +46,10 @@ Working set size (\fB1m\fR for directory, full size for file or device).
 .TP
 .BI \-o \ offset
 Offset of working set in the file/device (0).
+.TP
+.BI \-k
+Do no delete temporary working file "ioping.tmp" and reuse it at next run.
+This speeds up preparation and helps to get more stable results from run to run.
 .TP
 .B \-L
 Use sequential operations rather than random. This also sets request size

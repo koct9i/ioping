@@ -234,6 +234,7 @@ void usage(void)
 			"      -s <size>       request size (4k)\n"
 			"      -S <wsize>      working set size (1m)\n"
 			"      -o <offset>     working set offset (0)\n"
+			"      -k              keep and reuse temporary working file\n"
 			"      -L              use sequential operations (includes -s 256k)\n"
 			"      -A              use asynchronous I/O\n"
 			"      -C              use cached I/O\n"
@@ -416,6 +417,8 @@ ssize_t size = 1<<12;
 off_t wsize = 0;
 off_t temp_wsize = 1<<20;
 
+int keep_file = 0;
+
 off_t offset = 0;
 off_t woffset = 0;
 
@@ -433,7 +436,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvALRDCWBqi:w:s:S:c:o:p:P:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvkALRDCWBqi:w:s:S:c:o:p:P:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -493,6 +496,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'c':
 				count = parse_int(optarg);
+				break;
+			case 'k':
+				keep_file = 1;
 				break;
 			case '?':
 				usage();
@@ -757,15 +763,19 @@ int create_temp(char *path, char *name)
 {
 	int length = strlen(path) + strlen(name) + 9;
 	char *temp = malloc(length);
+	DWORD attr = 0;
 	HANDLE h;
-	DWORD attr;
 
 	if (!temp)
 		err(2, NULL);
-	snprintf(temp, length, "%s\\%s.XXXXXX", path, name);
-	mktemp(temp);
 
-	attr = FILE_ATTRIBUTE_HIDDEN | FILE_FLAG_DELETE_ON_CLOSE;
+	snprintf(temp, length, "%s\\%s", path, name);
+
+	if (!keep_file) {
+		strcat(tmp, ".XXXXXX");
+		mktemp(temp);
+		attr |= FILE_ATTRIBUTE_HIDDEN | FILE_FLAG_DELETE_ON_CLOSE;
+	}
 	if (!cached)
 		attr |= FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH;
 	if (randomize)
@@ -814,6 +824,13 @@ int create_temp(char *path, char *name)
 
 	snprintf(temp, length, "%s/%s", path, name);
 
+	if (keep_file) {
+		fd = open(temp, O_RDWR|O_CREAT, 0600);
+		if (fd < 0)
+			goto out;
+		goto done;
+	}
+
 #ifdef O_TMPFILE
 	fd = open(temp, O_RDWR|O_TMPFILE, 0600);
 	if (fd >= 0)
@@ -827,9 +844,7 @@ int create_temp(char *path, char *name)
 	if (unlink(temp))
 		err(2, "unlink \"%s\" failed", temp);
 
-#ifdef O_TMPFILE
 done:
-#endif
 #ifdef HAVE_DIRECT_IO
 	if (direct && fcntl(fd, F_SETFL, O_DIRECT))
 		errx(2, "fcntl failed, please retry without -D");
@@ -959,10 +974,18 @@ int main (int argc, char **argv)
 		fd = create_temp(path, "ioping.tmp");
 		if (fd < 0)
 			err(2, "failed to create temporary file at \"%s\"", path);
+		if (keep_file) {
+			if (fstat(fd, &st))
+				err(2, "fstat at \"%s\" failed", path);
+			if (st.st_size >= offset + wsize &&
+			    st.st_blocks >= (st.st_size + 511) / 512)
+				goto skip_preparation;
+		}
 		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
 			if (pwrite(fd, buf, size, offset + woffset) != size)
 				err(2, "write failed");
 		}
+skip_preparation:
 		if (fsync(fd))
 			err(2, "fsync failed");
 	} else if (S_ISREG(st.st_mode)) {
