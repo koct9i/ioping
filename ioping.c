@@ -842,6 +842,8 @@ int main (int argc, char **argv)
 	double part_sum, part_sum2, part_mdev, part_avg;
 	long long time_now, time_next, period_deadline;
 
+	setvbuf(stdout, NULL, _IOLBF, 0);
+
 	parse_options(argc, argv);
 
 	interval_ts.tv_sec = interval / 1000000;
