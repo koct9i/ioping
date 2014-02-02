@@ -86,6 +86,14 @@
 # define HAVE_ERR_INCLUDE
 #endif
 
+#ifdef __sun__	/* Solaris */
+# include <sys/dkio.h>
+# include <sys/vtoc.h>
+# define HAVE_DIRECT_IO
+# define O_DIRECT	O_DSYNC
+# define HAVE_ERR_INCLUDE
+#endif
+
 #if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
 # define HAVE_POSIX_FDATASYNC
 #endif
@@ -598,6 +606,11 @@ off_t get_device_size(int fd, struct stat *st)
 	part = label.d_partitions[DISKPART(st->st_rdev)];
 
 	blksize = DL_GETPSIZE(&part) * label.d_secsize;
+#elif defined(__sun__)
+	struct dk_minfo dkmp;
+
+	ret = ioctl(fd, DKIOCGMEDIAINFO, &dkmp);
+	blksize =  dkmp.dki_capacity * dkmp.dki_lbsize;
 #else
 # error no get disk size method
 #endif
