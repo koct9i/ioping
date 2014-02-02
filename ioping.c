@@ -753,16 +753,16 @@ static void aio_setup(void)
 
 #ifdef __MINGW32__
 
-int create_temp(char *path, char *template)
+int create_temp(char *path, char *name)
 {
-	int length = strlen(path) + strlen(template) + 2;
+	int length = strlen(path) + strlen(name) + 9;
 	char *temp = malloc(length);
 	HANDLE h;
 	DWORD attr;
 
 	if (!temp)
 		err(2, NULL);
-	snprintf(temp, length, "%s\\%s", path, template);
+	snprintf(temp, length, "%s\\%s.XXXXXX", path, name);
 	mktemp(temp);
 
 	attr = FILE_ATTRIBUTE_HIDDEN | FILE_FLAG_DELETE_ON_CLOSE;
@@ -803,26 +803,39 @@ void set_signal(void)
 
 #else /* __MINGW32__ */
 
-int create_temp(char *path, char *template)
+int create_temp(char *path, char *name)
 {
-	int length = strlen(path) + strlen(template) + 2;
+	int length = strlen(path) + strlen(name) + 9;
 	char *temp = malloc(length);
 	int fd;
 
 	if (!temp)
 		err(2, NULL);
-	snprintf(temp, length, "%s/%s", path, template);
 
+	snprintf(temp, length, "%s/%s", path, name);
+
+#ifdef O_TMPFILE
+	fd = open(temp, O_RDWR|O_TMPFILE, 0600);
+	if (fd >= 0)
+		goto done;
+#endif
+
+	strcat(temp, ".XXXXXX");
 	fd = mkstemp(temp);
 	if (fd < 0)
-		err(2, "failed to create temporary file at \"%s\"", path);
+		goto out;
 	if (unlink(temp))
 		err(2, "unlink \"%s\" failed", temp);
-	free(temp);
-# ifdef HAVE_DIRECT_IO
+
+#ifdef O_TMPFILE
+done:
+#endif
+#ifdef HAVE_DIRECT_IO
 	if (direct && fcntl(fd, F_SETFL, O_DIRECT))
 		errx(2, "fcntl failed, please retry without -D");
-# endif
+#endif
+out:
+	free(temp);
 	return fd;
 }
 
@@ -943,7 +956,9 @@ int main (int argc, char **argv)
 	memset(buf, '*', size);
 
 	if (S_ISDIR(st.st_mode)) {
-		fd = create_temp(path, "ioping.XXXXXX");
+		fd = create_temp(path, "ioping.tmp");
+		if (fd < 0)
+			err(2, "failed to create temporary file at \"%s\"", path);
 		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
 			if (pwrite(fd, buf, size, offset + woffset) != size)
 				err(2, "write failed");
