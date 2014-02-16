@@ -612,7 +612,10 @@ off_t get_device_size(int fd, struct stat *st)
 	ret = ioctl(fd, DKIOCGMEDIAINFO, &dkmp);
 	blksize =  dkmp.dki_capacity * dkmp.dki_lbsize;
 #else
-# error no get disk size method
+# warning no get disk size method
+	ret = -1;
+	errno = ENOSYS;
+	blksize = 0;
 #endif
 	(void)fd;
 	(void)st;
