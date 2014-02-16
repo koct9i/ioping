@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <inttypes.h>
 #include <getopt.h>
 #include <string.h>
 #include <unistd.h>
@@ -353,12 +352,19 @@ long long parse_time(const char *str)
 
 void print_suffix(int64_t val, struct suffix *sfx)
 {
+	int precision;
+
 	while (val < sfx->mul && sfx->mul > 1)
 		sfx++;
-	if (sfx->mul == 1)
-		printf("%" PRId64, val);
+
+	if (val % sfx->mul == 0)
+		precision = 0;
+	else if (val >= sfx->mul * 10)
+		precision = 1;
 	else
-		printf("%.1f", val * 1.0 / sfx->mul);
+		precision = 2;
+
+	printf("%.*f", precision, val * 1.0 / sfx->mul);
 	if (*sfx->txt)
 		printf(" %s", sfx->txt);
 }
