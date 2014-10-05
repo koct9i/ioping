@@ -36,6 +36,9 @@ version: $(DISTFILES)
 clean:
 	$(RM) -f $(OBJS) $(BINS) $(MANS_F)
 
+strip: $(BINS)
+	$(STRIP) $^
+
 install: $(BINS) $(MANS)
 	mkdir -p $(DESTDIR)$(BINDIR)
 	install -s -m 0755 $(BINS) $(DESTDIR)$(BINDIR)
