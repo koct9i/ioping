@@ -876,6 +876,26 @@ void set_signal(void)
 
 #endif /* __MINGW32__ */
 
+void random_memory(void *buf, size_t len)
+{
+	unsigned char *ptr = buf;
+	size_t i;
+
+	for (i = 0; i < len; i++)
+		ptr[i] = random();
+}
+
+/* not so random but much faster */
+void shake_memory(void *buf, size_t len)
+{
+	unsigned int *ptr = buf;
+	unsigned int word = random();
+	size_t i;
+
+	for (i = 0, len /= 4; i < len; i++)
+		ptr[i] ^= word;
+}
+
 int main (int argc, char **argv)
 {
 	long ret_size;
@@ -985,7 +1005,8 @@ int main (int argc, char **argv)
 	ret = posix_memalign(&buf, 0x1000, size);
 	if (ret)
 		errx(2, "buffer allocation failed");
-	memset(buf, '*', size);
+
+	random_memory(buf, size);
 
 	if (S_ISDIR(st.st_mode)) {
 		fd = create_temp(path, "ioping.tmp");
@@ -1003,6 +1024,7 @@ int main (int argc, char **argv)
 		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
 			if (pwrite(fd, buf, size, offset + woffset) != size)
 				err(2, "write failed");
+			random_memory(buf, size);
 		}
 skip_preparation:
 		if (fsync(fd))
@@ -1061,6 +1083,9 @@ skip_preparation:
 				err(3, "fadvise failed");
 		}
 #endif
+
+		if (write_test)
+			shake_memory(buf, size);
 
 		this_time = now();
 
