@@ -350,7 +350,7 @@ long long parse_time(const char *str)
 	return parse_suffix(str, time_suffix);
 }
 
-void print_suffix(int64_t val, struct suffix *sfx)
+void print_suffix(long long val, struct suffix *sfx)
 {
 	int precision;
 
@@ -778,7 +778,7 @@ int create_temp(char *path, char *name)
 	snprintf(temp, length, "%s\\%s", path, name);
 
 	if (!keep_file) {
-		strcat(tmp, ".XXXXXX");
+		strcat(temp, ".XXXXXX");
 		mktemp(temp);
 		attr |= FILE_ATTRIBUTE_HIDDEN | FILE_FLAG_DELETE_ON_CLOSE;
 	}
@@ -983,8 +983,10 @@ int main (int argc, char **argv)
 		if (keep_file) {
 			if (fstat(fd, &st))
 				err(2, "fstat at \"%s\" failed", path);
-			if (st.st_size >= offset + wsize &&
-			    st.st_blocks >= (st.st_size + 511) / 512)
+			if (st.st_size >= offset + wsize)
+#ifndef __MINGW32__
+			    if (st.st_blocks >= (st.st_size + 511) / 512)
+#endif
 				goto skip_preparation;
 		}
 		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
