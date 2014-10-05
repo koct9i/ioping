@@ -21,3 +21,15 @@ since v0.6
 since v0.7
  - OpenBSD port
  - switch to IEEE 1541-2002 units: MiB/s
+
+since v0.8
+ - switch to line-buffered output for non-tty terminals, bug #17
+ - Sun/Solaris port, bug #16
+ - LICENSE (GPL-v3) included into distribution, bug #15
+ - block-devices now optional, should helps future ports
+ - support for O_TMPFILE at Linux
+ - Key '-k' for keeping temporary file
+ - print at least three decimal digits
+ - support for pinging /dev/zero
+ - randomize data to avoid compression in ssd
+ - make strip target in makefile

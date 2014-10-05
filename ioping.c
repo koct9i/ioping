@@ -1,7 +1,7 @@
 /*
  *  ioping  -- simple I/0 latency measuring tool
  *
- *  Copyright (C) 2011-2013 Konstantin Khlebnikov <koct9i@gmail.com>
+ *  Copyright (C) 2011-2014 Konstantin Khlebnikov <koct9i@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
