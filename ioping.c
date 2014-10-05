@@ -766,6 +766,7 @@ int create_temp(char *path, char *name)
 {
 	int length = strlen(path) + strlen(name) + 9;
 	char *temp = malloc(length);
+	DWORD action;
 	DWORD attr = 0;
 	HANDLE h;
 
@@ -777,8 +778,12 @@ int create_temp(char *path, char *name)
 	if (!keep_file) {
 		strcat(temp, ".XXXXXX");
 		mktemp(temp);
+		action = CREATE_NEW;
 		attr |= FILE_ATTRIBUTE_HIDDEN | FILE_FLAG_DELETE_ON_CLOSE;
+	} else {
+		action = OPEN_ALWAYS;
 	}
+
 	if (!cached)
 		attr |= FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH;
 	if (randomize)
@@ -788,7 +793,7 @@ int create_temp(char *path, char *name)
 
 	h = CreateFile(temp, GENERIC_READ | GENERIC_WRITE,
 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-			NULL, CREATE_ALWAYS, attr, NULL);
+			NULL, action, attr, NULL);
 
 	free(temp);
 	if (h == INVALID_HANDLE_VALUE)
