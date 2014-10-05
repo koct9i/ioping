@@ -1070,7 +1070,8 @@ skip_preparation:
 
 		if (!quiet) {
 			print_size(ret_size);
-			printf(" from %s (%s %s", path, fstype, device);
+			printf(" %s %s (%s %s", write_test ? "to" : "from",
+					path, fstype, device);
 			if (device_size)
 				print_size(device_size);
 			printf("): request=%d time=", request);
