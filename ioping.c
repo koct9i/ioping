@@ -586,7 +586,7 @@ void parse_device(dev_t dev)
 
 #endif
 
-off_t get_device_size(int fd, struct stat *st)
+int get_device_size(int fd, struct stat *st)
 {
 	unsigned long long blksize = 0;
 	int ret = 0;
@@ -630,12 +630,9 @@ off_t get_device_size(int fd, struct stat *st)
 	blksize = 0;
 #endif
 	(void)fd;
-	(void)st;
 
-	if (ret)
-		err(2, "block get size ioctl failed");
-
-	return blksize;
+	st->st_size = blksize;
+	return ret;
 }
 
 ssize_t do_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
@@ -955,9 +952,23 @@ int main (int argc, char **argv)
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
 
-		device_size = get_device_size(fd, &st);
-		st.st_size = device_size;
-		fstype = "device";
+		if (get_device_size(fd, &st)) {
+			if (!S_ISCHR(st.st_mode))
+				err(2, "block get size ioctl failed");
+			st.st_size = offset + temp_wsize;
+			fstype = "character";
+			device = "device";
+		} else {
+			device_size = st.st_size;
+			fstype = "block";
+			device = "device ";
+		}
+
+		if (!cached && write_test && fdatasync(fd)) {
+			warnx("fdatasync not supported by \"%s\", "
+			      "enable cached requests", path);
+			cached = 1;
+		}
 	} else {
 		errx(2, "unsupported destination: \"%s\"", path);
 	}
