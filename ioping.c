@@ -835,7 +835,7 @@ int create_temp(char *path, char *name)
 	}
 
 #ifdef O_TMPFILE
-	fd = open(temp, O_RDWR|O_TMPFILE, 0600);
+	fd = open(path, O_RDWR|O_TMPFILE, 0600);
 	if (fd >= 0)
 		goto done;
 #endif
