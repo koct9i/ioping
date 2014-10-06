@@ -429,7 +429,7 @@ off_t offset = 0;
 off_t woffset = 0;
 
 int request;
-int count = 0;
+int stop_at_request = 0;
 
 int exiting = 0;
 
@@ -501,7 +501,7 @@ void parse_options(int argc, char **argv)
 				batch_mode = 1;
 				break;
 			case 'c':
-				count = parse_int(optarg);
+				stop_at_request = parse_int(optarg);
 				break;
 			case 'k':
 				keep_file = 1;
@@ -1155,7 +1155,7 @@ skip_preparation:
 		if (exiting)
 			break;
 
-		if (count && request >= count)
+		if (stop_at_request && request >= stop_at_request)
 			break;
 
 		if (deadline && time_next >= deadline)
