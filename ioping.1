@@ -42,14 +42,13 @@ Set time between requests to \fIinterval\fR (\fB1s\fR).
 Request size (\fB4k\fR).
 .TP
 .BI \-S \ size
-Working set size (\fB1m\fR for directory, full size for file or device).
+Working set size (\fB1m\fR for directory, whole size for file or device).
 .TP
 .BI \-o \ offset
-Offset of working set in the file/device (0).
+Starting offset in the file/device (0).
 .TP
 .BI \-k
-Do no delete temporary working file "ioping.tmp" and reuse it at next run.
-This speeds up preparation and helps to get more stable results from run to run.
+Keep (do not delete) working file "ioping.tmp". Works for directory target.
 .TP
 .B \-L
 Use sequential operations rather than random. This also sets request size
@@ -65,12 +64,13 @@ Use cached I/O (suppress cache invalidation via \fBposix_fadvise\fR(2)).
 Use direct I/O (see \fBO_DIRECT\fR in \fBopen\fR(2)).
 .TP
 .B \-W
-Use writes rather than reads.
-\fB*DANGEROUS*\fR It will shred your data if target is file or device,
-repeat key tree times (\fB-WWW\fR) to do this.
+Use writes rather than reads. Safe for directory target.
+\fB*DANGEROUS*\fR for file/device, it will shred your data.
+In this case should be repeated tree times (\fB-WWW\fR).
 .TP
 .B \-R
 Disk seek rate test (same as \fB\-q \-i 0 \-w 3 \-S 64m\fR).
+If disk has huge cache working set (-S) should be increased accordingly.
 .TP
 .B \-B
 Batch mode. Be quiet and print final statistics in raw format.
@@ -191,6 +191,9 @@ Measure disk seek rate.
 .TP
 .B ioping -RL /dev/sda
 Measure disk sequential speed.
+.TP
+.B ioping -RLB . | awk '{print $4}'
+Get disk sequential speed in bytes per second.
 .SH SEE ALSO
 .BR iostat (1),
 .BR dd (1),
