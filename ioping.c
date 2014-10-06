@@ -1193,9 +1193,9 @@ skip_preparation:
 		printf(" requests completed in ");
 		print_time(time_total);
 		printf(", ");
-		print_int(request * 1000000. / time_sum);
+		print_int(1000000. * request / time_sum);
 		printf(" iops, ");
-		print_size(request * size * 1000000. / time_sum);
+		print_size(1000000. * request * size / time_sum);
 		printf("/s\n");
 		printf("min/avg/max/mdev = ");
 		print_time(time_min);
