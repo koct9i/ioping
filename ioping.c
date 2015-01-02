@@ -419,7 +419,8 @@ long long interval = 1000000;
 struct timespec interval_ts;
 long long deadline = 0;
 
-ssize_t size = 1<<12;
+ssize_t default_size = 1<<12;
+ssize_t size = 0;
 off_t wsize = 0;
 off_t temp_wsize = 1<<20;
 
@@ -452,7 +453,7 @@ void parse_options(int argc, char **argv)
 				exit(0);
 			case 'L':
 				randomize = 0;
-				size = 1<<18;
+				default_size = 1<<18;
 				break;
 			case 'R':
 				interval = 0;
@@ -927,13 +928,16 @@ int main (int argc, char **argv)
 	interval_ts.tv_sec = interval / 1000000;
 	interval_ts.tv_nsec = (interval % 1000000) * 1000;
 
+	if (!size)
+		size = default_size;
+
+	if (size <= 0)
+		errx(1, "request size must be greather than zero");
+
 	if (wsize)
 		temp_wsize = wsize;
 	else if (size > temp_wsize)
 		temp_wsize = size;
-
-	if (size <= 0)
-		errx(1, "request size must be greather than zero");
 
 	flags = O_RDONLY;
 
