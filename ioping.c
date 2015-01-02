@@ -914,7 +914,7 @@ int main (int argc, char **argv)
 	int ret, flags;
 
 	int part_request;
-	long long this_time, time_total;
+	long long this_time;
 	double part_min, part_max, time_min, time_max;
 	double time_sum, time_sum2, time_mdev, time_avg;
 	double part_sum, part_sum2, part_mdev, part_avg;
@@ -1076,7 +1076,6 @@ skip_preparation:
 	part_sum2 = time_sum2 = 0;
 
 	time_now = now();
-	time_total = time_now;
 	period_deadline = time_now + period_time;
 
 	while (!exiting) {
@@ -1171,8 +1170,6 @@ skip_preparation:
 			nanosleep(&interval_ts, NULL);
 	}
 
-	time_total = now() - time_total;
-
 	time_sum += part_sum;
 	time_sum2 += part_sum2;
 	if (part_min < time_min)
@@ -1197,7 +1194,7 @@ skip_preparation:
 		printf(") ioping statistics ---\n");
 		print_int(request);
 		printf(" requests completed in ");
-		print_time(time_total);
+		print_time(time_sum);
 		printf(", ");
 		print_int(1000000. * request / time_sum);
 		printf(" iops, ");
