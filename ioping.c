@@ -528,6 +528,7 @@ void parse_device(dev_t dev)
 	struct stat st;
 	size_t len;
 	FILE *file;
+	char *real;
 
 	/* since v2.6.26 */
 	file = fopen("/proc/self/mountinfo", "r");
@@ -560,6 +561,11 @@ old:
 out:
 	free(buf);
 	fclose(file);
+	real = realpath(device, NULL);
+	if (real) {
+		free(device);
+		device = real;
+	}
 }
 
 #elif defined(__APPLE__) || defined(__OpenBSD__) \
