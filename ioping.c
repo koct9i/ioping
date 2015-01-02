@@ -1196,6 +1196,8 @@ skip_preparation:
 		printf(" requests completed in ");
 		print_time(time_sum);
 		printf(", ");
+		print_size(request * size);
+		printf(" %s, ", write_test ? "written" : "read");
 		print_int(1000000. * request / time_sum);
 		printf(" iops, ");
 		print_size(1000000. * request * size / time_sum);
