@@ -45,6 +45,7 @@
 # define HAVE_DIRECT_IO
 # define HAVE_LINUX_ASYNC_IO
 # define HAVE_ERR_INCLUDE
+# define MAX_RW_COUNT		0x7ffff000 /* 2G - 4K */
 #endif
 
 #ifdef __gnu_hurd__
@@ -910,7 +911,7 @@ void shake_memory(void *buf, size_t len)
 
 int main (int argc, char **argv)
 {
-	long ret_size;
+	ssize_t ret_size;
 	struct stat st;
 	int ret, flags;
 
@@ -933,6 +934,12 @@ int main (int argc, char **argv)
 
 	if (size <= 0)
 		errx(1, "request size must be greather than zero");
+
+#ifdef MAX_RW_COUNT
+	if (size > MAX_RW_COUNT)
+		warnx("this platform supports requests %u bytes at most",
+				MAX_RW_COUNT);
+#endif
 
 	if (wsize)
 		temp_wsize = wsize;
@@ -1036,10 +1043,15 @@ int main (int argc, char **argv)
 #endif
 				goto skip_preparation;
 		}
-		for (woffset = 0 ; woffset + size <= wsize ; woffset += size) {
-			if (pwrite(fd, buf, size, offset + woffset) != size)
-				err(2, "write failed");
-			random_memory(buf, size);
+		for (woffset = 0 ; woffset < wsize ; woffset += ret_size) {
+			ret_size = size;
+			if (woffset + ret_size > wsize)
+				ret_size = wsize - woffset;
+			if (woffset)
+				random_memory(buf, ret_size);
+			ret_size = pwrite(fd, buf, ret_size, offset + woffset);
+			if (ret_size <= 0)
+				err(2, "preparation write failed");
 		}
 skip_preparation:
 		if (fsync(fd))
@@ -1104,8 +1116,13 @@ skip_preparation:
 		this_time = now();
 
 		ret_size = make_request(fd, buf, size, offset + woffset);
-		if (ret_size < 0 && errno != EINTR)
-			err(3, "request failed");
+		if (ret_size < 0) {
+			if (errno != EINTR)
+				err(3, "request failed");
+		} else if (ret_size < size)
+			warnx("request returned less than expected: %zu", ret_size);
+		else if (ret_size > size)
+			errx(3, "request returned more than expected: %zu", ret_size);
 
 		time_now = now();
 		this_time = time_now - this_time;
