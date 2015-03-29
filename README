@@ -4,12 +4,38 @@ ioping
 An tool to monitor I/O latency in real time.
 It shows disk latency in the same way as ping shows network latency.
 
-Homepage: http://code.google.com/p/ioping/
+Homepage: https://github.com/koct9i/ioping/
+(migrated from http://code.google.com/p/ioping/)
 
 Please send your patches, issues and questions to
-http://code.google.com/p/ioping/issues/
+https://github.com/koct9i/ioping/issues/
 
-Authors:
+Supported OS
+------------
+
+* GNU/Linux
+* GNU/HURD
+* Windows
+* OS X
+* FreeBSD
+* DragonFlyBSD
+* OpenBSD
+
+Packages
+--------
+
+Debian: https://packages.debian.org/unstable/main/ioping
+Ubuntu: https://launchpad.net/ubuntu/+source/ioping
+Fedora: https://apps.fedoraproject.org/packages/ioping
+ArchLinux: https://www.archlinux.org/packages/community/x86_64/ioping
+AltLinux: http://www.sisyphus.ru/en/srpm/Sisyphus/ioping
+Gentoo: https://packages.gentoo.org/package/app-benchmarks/ioping
+FreeBSD: http://www.freshports.org/sysutils/ioping
+OS X: https://github.com/Homebrew/homebrew/blob/master/Library/Formula/ioping.rb
+
+Authors
+-------
+
 Konstantin Khlebnikov <koct9i@gmail.com>
 Kir Kolyshkin <kir@openvz.org>
 
