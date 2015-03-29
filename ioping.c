@@ -1,7 +1,7 @@
 /*
  *  ioping  -- simple I/0 latency measuring tool
  *
- *  Copyright (C) 2011-2014 Konstantin Khlebnikov <koct9i@gmail.com>
+ *  Copyright (C) 2011-2015 Konstantin Khlebnikov <koct9i@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -322,33 +322,43 @@ static struct suffix time_suffix[] = {
 	{ NULL,		0ll },
 };
 
-long long parse_suffix(const char *str, struct suffix *sfx)
+long long parse_suffix(const char *str, struct suffix *sfx,
+		       long long min, long long max)
 {
 	char *end;
 	double val;
 
 	val = strtod(str, &end);
 	for ( ; sfx->txt ; sfx++ ) {
-		if (!strcasecmp(end, sfx->txt))
-			return val * sfx->mul;
+		if (strcasecmp(end, sfx->txt))
+			continue;
+		val *= sfx->mul;
+		if (val < min || val > max)
+			errx(1, "integer overflow at parsing argument: %s", str);
+		return val;
 	}
 	errx(1, "invalid suffix: \"%s\"", end);
 	return 0;
 }
 
-long long parse_int(const char *str)
+int parse_int(const char *str)
 {
-	return parse_suffix(str, int_suffix);
+	return parse_suffix(str, int_suffix, 0, INT_MAX);
 }
 
-long long parse_size(const char *str)
+ssize_t parse_size(const char *str)
 {
-	return parse_suffix(str, size_suffix);
+	return parse_suffix(str, size_suffix, 0, LONG_MAX);
+}
+
+off_t parse_offset(const char *str)
+{
+	return parse_suffix(str, size_suffix, 0, LLONG_MAX);
 }
 
 long long parse_time(const char *str)
 {
-	return parse_suffix(str, time_suffix);
+	return parse_suffix(str, time_suffix, 0, LLONG_MAX);
 }
 
 void print_suffix(long long val, struct suffix *sfx)
@@ -484,10 +494,10 @@ void parse_options(int argc, char **argv)
 				size = parse_size(optarg);
 				break;
 			case 'S':
-				wsize = parse_size(optarg);
+				wsize = parse_offset(optarg);
 				break;
 			case 'o':
-				offset = parse_size(optarg);
+				offset = parse_offset(optarg);
 				break;
 			case 'p':
 				period_request = parse_int(optarg);
@@ -1015,7 +1025,7 @@ int main (int argc, char **argv)
 		errx(2, "unsupported destination: \"%s\"", path);
 	}
 
-	if (offset + wsize > st.st_size)
+	if (wsize > st.st_size || offset > st.st_size - wsize)
 		errx(2, "target is too small for this");
 
 	if (!wsize)
@@ -1217,7 +1227,7 @@ skip_preparation:
 		printf(" requests completed in ");
 		print_time(time_sum);
 		printf(", ");
-		print_size(request * size);
+		print_size((long long)request * size);
 		printf(" %s, ", write_test ? "written" : "read");
 		print_int(1000000. * request / time_sum);
 		printf(" iops, ");
