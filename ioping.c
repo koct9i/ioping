@@ -243,6 +243,7 @@ void usage(void)
 			"      -R              seek rate test (same as -q -i 0 -w 3 -S 64m)\n"
 			"      -B              print final statistics in raw format\n"
 			"      -q              suppress human-readable output\n"
+			"      -t              print timestamp using posix time spec.\n"
 			"      -h              display this message and exit\n"
 			"      -v              display version and exit\n"
 			"\n"
