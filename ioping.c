@@ -415,6 +415,7 @@ void *buf;
 
 int quiet = 0;
 int batch_mode = 0;
+int report_time = 0;
 int direct = 0;
 int async = 0;
 int cached = 0;
@@ -454,7 +455,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvkALRDCWBqi:w:s:S:c:o:p:P:")) != -1) {
+	while ((opt = getopt(argc, argv, "htvkALRDCWBqi:w:s:S:c:o:p:P:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -507,6 +508,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'q':
 				quiet = 1;
+				break;
+			case 't':
+				report_time = 1;
 				break;
 			case 'B':
 				quiet = 1;
@@ -1166,7 +1170,13 @@ skip_preparation:
 					path, fstype, device);
 			if (device_size)
 				print_size(device_size);
-			printf("): timestamp=%s request=%d time=", timestamp(), request);
+			if (report_time) {
+				printf("): timestamp=%s request=%d time=",
+					timestamp(), request);
+			} else {
+				printf("): request=%d time=", request);
+			}
+
 			print_time(this_time);
 			printf("\n");
 		}
@@ -1175,9 +1185,11 @@ skip_preparation:
 		    (period_time && (time_next >= period_deadline))) {
 			part_avg = part_sum / part_request;
 			part_mdev = sqrt(part_sum2 / part_request - part_avg * part_avg);
-
-			printf("%s %d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
-					timestamp(), part_request, part_sum,
+			if (report_time) { // Add a prefix to non-timestamped results.
+				printf("%s ", timestamp());
+			}
+			printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
+					part_request, part_sum,
 					1000000. * part_request / part_sum,
 					1000000. * part_request * size / part_sum,
 					part_min, part_avg,
@@ -1227,8 +1239,9 @@ skip_preparation:
 	time_mdev = sqrt(time_sum2 / request - time_avg * time_avg);
 
 	if (batch_mode) {
-		printf("%s %d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
-				timestamp(), request, time_sum,
+		if (report_time) printf("%s ", timestamp());
+		printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
+				request, time_sum,
 				1000000. * request / time_sum,
 				1000000. * request * size / time_sum,
 				time_min, time_avg,
