@@ -919,6 +919,21 @@ void shake_memory(void *buf, size_t len)
 		ptr[i] ^= word;
 }
 
+static char *timestamp()
+{
+	time_t t;
+	struct tm *tm;
+	static char buf[64];
+
+	time(&t);
+	tm = localtime(&t);
+
+	sprintf(buf, "%4d-%02d-%02d %02d:%02d:%02d",
+	tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
+	tm->tm_hour, tm->tm_min, tm->tm_sec);
+	return(buf);
+}
+
 int main (int argc, char **argv)
 {
 	ssize_t ret_size;
@@ -1151,7 +1166,7 @@ skip_preparation:
 					path, fstype, device);
 			if (device_size)
 				print_size(device_size);
-			printf("): request=%d time=", request);
+			printf("): timestamp=%s request=%d time=", timestamp(), request);
 			print_time(this_time);
 			printf("\n");
 		}
@@ -1161,8 +1176,8 @@ skip_preparation:
 			part_avg = part_sum / part_request;
 			part_mdev = sqrt(part_sum2 / part_request - part_avg * part_avg);
 
-			printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
-					part_request, part_sum,
+			printf("%s %d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
+					timestamp(), part_request, part_sum,
 					1000000. * part_request / part_sum,
 					1000000. * part_request * size / part_sum,
 					part_min, part_avg,
@@ -1212,8 +1227,8 @@ skip_preparation:
 	time_mdev = sqrt(time_sum2 / request - time_avg * time_avg);
 
 	if (batch_mode) {
-		printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
-				request, time_sum,
+		printf("%s %d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
+				timestamp(), request, time_sum,
 				1000000. * request / time_sum,
 				1000000. * request * size / time_sum,
 				time_min, time_avg,
