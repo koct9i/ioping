@@ -3,15 +3,15 @@
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
-.OP \-LABCDWRkq
+.OP \-ABCDLRWkq
 .OP \-c count
-.OP \-w deadline
-.OP \-p period
-.OP \-P period
 .OP \-i interval
 .OP \-s size
 .OP \-S wsize
 .OP \-o offset
+.OP \-w deadline
+.OP \-p period
+.OP \-P period
 .IR directory | file | device
 .br
 .SY ioping
@@ -20,20 +20,12 @@ ioping \- simple disk I/O latency monitoring tool
 .B -v
 .br
 .SH DESCRIPTION
-This tool lets you monitor I/O latency in real time.
+This tool generates various I/O patterns and lets you monitor I/O speed and
+latency in real time.
 .SH OPTIONS
 .TP
 .BI \-c \ count
 Stop after \fIcount\fR requests.
-.TP
-.BI \-w \ deadline
-Stop after \fIdeadline\fR time passed.
-.TP
-.BI \-p \ period
-Print raw statistics for every \fIperiod\fR requests.
-.TP
-.BI \-P \ period
-Print raw statistics for every \fIperiod\fR in time.
 .TP
 .BI \-i \ interval
 Set time between requests to \fIinterval\fR (\fB1s\fR).
@@ -41,39 +33,53 @@ Set time between requests to \fIinterval\fR (\fB1s\fR).
 .BI \-s \ size
 Request size (\fB4k\fR).
 .TP
-.BI \-S \ size
+.BI \-S \ wsize
 Working set size (\fB1m\fR for directory, whole size for file or device).
 .TP
 .BI \-o \ offset
 Starting offset in the file/device (0).
 .TP
-.BI \-k
-Keep (do not delete) working file "ioping.tmp". Works for directory target.
+.BI \-w \ deadline
+Stop after \fIdeadline\fR time passed.
 .TP
-.B \-L
-Use sequential operations rather than random. This also sets request size
-to \fB256k\fR (as in \fB-s 256k\fR).
+.BI \-p \ period
+Print raw statistics for every \fIperiod\fR requests (see format below).
+.TP
+.BI \-P \ period
+Print raw statistics for every \fIperiod\fR in time.
 .TP
 .B \-A
 Use asynchronous I/O (syscalls \fBio_submit\fR(2), \fBio_submit\fR(2), etc).
 .TP
+.B \-B
+Batch mode. Be quiet and print final statistics in raw format.
+.TP
 .B \-C
-Use cached I/O (suppress cache invalidation via \fBposix_fadvise\fR(2)).
+Use cached I/O. Suppress cache invalidation via \fBposix_fadvise\fR(2)) before
+read and \fBfdatasync\fR(2) after each write.
 .TP
 .B \-D
 Use direct I/O (see \fBO_DIRECT\fR in \fBopen\fR(2)).
 .TP
-.B \-W
-Use writes rather than reads. Safe for directory target.
-\fB*DANGEROUS*\fR for file/device, it will shred your data.
-In this case should be repeated tree times (\fB-WWW\fR).
+.B \-L
+Use sequential operations rather than random. This also sets default request
+size to \fB256k\fR (as in \fB-s 256k\fR).
 .TP
 .B \-R
-Disk seek rate test (same as \fB\-q \-i 0 \-w 3 \-S 64m\fR).
-If disk has huge cache working set (-S) should be increased accordingly.
+Disk seek rate test. This option suppress human-readable output for each
+request (as \fB-q\fR), sets default interval to zero (\fB-i 0\fR), stops
+measurement after 3 seconds (\fB-w 3\fR) and increases default working set
+size to 64m (\fB-S 64m\fR). Working set (\fB-S\fR) should be increased
+accordingly if disk has huge cache.
 .TP
-.B \-B
-Batch mode. Be quiet and print final statistics in raw format.
+.B \-W
+Use writes rather than reads. Safe for directory target. Write I/O gives
+more reliable results for systems where non-cached reads are not supported or
+cached at some level. Might be \fB*DANGEROUS*\fR for file/device: it will
+shred your data. In this case should be repeated tree times (\fB-WWW\fR).
+.TP
+.BI \-k
+Keep and reuse temporary working file "ioping.tmp" (only for directory target).
 .TP
 .B \-q
 Suppress periodical human-readable output.
@@ -181,7 +187,8 @@ Error during runtime.
 .TP
 .B ioping .
 Show disk I/O latency using the default values and the current directory,
-until interrupted.
+until interrupted. This command prepares temporary (unlinked/hidden) working
+file and reads random chunks from it using non-cached read requests.
 .TP
 .B ioping -c 10 -s 1M /tmp
 Measure latency on \fB/tmp\fR using 10 requests of 1 megabyte each.
@@ -205,7 +212,7 @@ Get disk sequential speed in bytes per second.
 .BR badblocks (8),
 .BR
 .SH HOMEPAGE
-.UR http://code.google.com/p/ioping/
+.UR https://github.com/koct9i/ioping/
 .UE .
 .SH AUTHORS
 This program was written by Konstantin Khlebnikov
