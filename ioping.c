@@ -18,6 +18,14 @@
  *
  */
 
+#ifndef VERSION
+# define VERSION "0.9"
+#endif
+
+#ifndef EXTRA_VERSION
+# define EXTRA_VERSION ""
+#endif
+
 #define _GNU_SOURCE
 #define _FILE_OFFSET_BITS 64
 
@@ -249,14 +257,9 @@ void usage(void)
 	       );
 }
 
-#ifndef VERSION
-# warning ioping version undefined
-# define VERSION ""
-#endif
-
 void version(void)
 {
-	fprintf(stderr, "ioping %s\n", VERSION);
+	fprintf(stderr, "ioping %s\n", VERSION EXTRA_VERSION);
 }
 
 struct suffix {

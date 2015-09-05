@@ -13,7 +13,8 @@ DOCS=README LICENSE changelog
 SPEC=ioping.spec
 
 PACKAGE=ioping
-VERSION=$(shell cat version)
+EXTRA_VERSION:=$(shell test -d .git && git describe --tags --dirty=+ | sed 's/^v[^-]*//;s/-/./g')
+VERSION:=$(shell sed -ne 's/\# define VERSION \"\(.*\)\"/\1/p' ioping.c)${EXTRA_VERSION}
 DISTDIR=$(PACKAGE)-$(VERSION)
 DISTFILES=$(SRCS) $(MANS) $(DOCS) $(SPEC) Makefile
 PACKFILES=$(BINS) $(MANS) $(MANS_F) $(DOCS)
@@ -28,10 +29,10 @@ TARGET=win32
 BINS:=$(BINS:=.exe)
 endif
 
-all: version $(BINS)
+all: $(BINS)
 
-version: $(DISTFILES)
-	test ! -d .git || git describe --tags --dirty=+ | sed 's/^v//;s/-/./g' > $@
+version:
+	@echo ${VERSION}
 
 clean:
 	$(RM) -f $(OBJS) $(BINS) $(MANS_F)
@@ -45,8 +46,8 @@ install: $(BINS) $(MANS)
 	mkdir -p $(DESTDIR)$(MAN1DIR)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
-%.o: %.c version
-	$(CC) $(CFLAGS) -DVERSION=\"${VERSION}\" -c -o $@ $<
+%.o: %.c
+	$(CC) $(CFLAGS) -DEXTRA_VERSION=\"${EXTRA_VERSION}\" -c -o $@ $<
 
 %.ps: %.1
 	man -t ./$< > $@
@@ -60,7 +61,7 @@ install: $(BINS) $(MANS)
 $(BINS): $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(LIBS)
 
-dist: version $(DISTFILES)
+dist: $(DISTFILES)
 	tar -cz --transform='s,^,$(DISTDIR)/,S' $^ -f $(DISTDIR).tar.gz
 
 binary-tgz: $(PACKFILES)
@@ -71,4 +72,4 @@ binary-zip: $(PACKFILES)
 	${STRIP} ${BINS}
 	zip ${PACKAGE}-${VERSION}-${TARGET}.zip $^
 
-.PHONY: all clean install dist
+.PHONY: all clean install dist version
