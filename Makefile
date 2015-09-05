@@ -66,10 +66,12 @@ dist: $(DISTFILES)
 
 binary-tgz: $(PACKFILES)
 	${STRIP} ${BINS}
-	tar czf ${PACKAGE}-${VERSION}-${TARGET}.tgz $^
+	tar -cz --transform='s,^,$(DISTDIR)/,S' -f ${PACKAGE}-${VERSION}-${TARGET}.tgz $^
 
 binary-zip: $(PACKFILES)
 	${STRIP} ${BINS}
-	zip ${PACKAGE}-${VERSION}-${TARGET}.zip $^
+	ln -s . $(DISTDIR)
+	zip ${PACKAGE}-${VERSION}-${TARGET}.zip $(addprefix $(DISTDIR)/,$^)
+	rm $(DISTDIR)
 
 .PHONY: all clean install dist version
