@@ -429,6 +429,7 @@ ssize_t (*make_request) (int fd, void *buf, size_t nbytes, off_t offset) = pread
 int period_request = 0;
 long long period_time = 0;
 
+int custom_interval, custom_deadline;
 long long interval = 1000000;
 struct timespec interval_ts;
 long long deadline = 0;
@@ -470,8 +471,10 @@ void parse_options(int argc, char **argv)
 				default_size = 1<<18;
 				break;
 			case 'R':
-				interval = 0;
-				deadline = 3000000;
+				if (!custom_interval)
+					interval = 0;
+				if (!custom_deadline)
+					deadline = 3000000;
 				temp_wsize = 1<<26;
 				quiet = 1;
 				break;
@@ -489,9 +492,11 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'i':
 				interval = parse_time(optarg);
+				custom_interval = 1;
 				break;
 			case 'w':
 				deadline = parse_time(optarg);
+				custom_deadline = 1;
 				break;
 			case 's':
 				size = parse_size(optarg);
