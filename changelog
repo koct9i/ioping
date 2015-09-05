@@ -33,3 +33,22 @@ since v0.8
  - support for pinging /dev/zero
  - randomize data to avoid compression in ssd
  - make strip target in makefile
+
+since v0.9
+ - resolve symlinks in /dev
+ - print IO run time instead of real time
+ - print amount of data written/read
+ - respect explicitly set size, interval and deadline
+ - warn about requests too big for linux
+ - fix several integer overflows
+ - migrate from code.google.com to github.com
+ - manpage/help update
+ - keep verion in source code
+ - respect expicitly set interval and deadline
+ - add top directory unto binary archives
+ - fix randromization in windows port
+ - use direct io for non-cached operations in windows port
+ - add windows "overlapped" aio
+ - use cached direct I/O as default fallback for non-cached non-direct
+ - use long long for count of request
+ - add option -t for detecting cache hits
