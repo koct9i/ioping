@@ -153,6 +153,8 @@ void warnx(const char *fmt, ...)
 
 #endif /* HAVE_ERR_INCLUDE */
 
+int async = 0;
+
 #ifdef __MINGW32__
 
 ssize_t pread(int fd, void *buf, size_t count, off_t offset)
@@ -167,6 +169,11 @@ ssize_t pread(int fd, void *buf, size_t count, off_t offset)
 
 	if (ReadFile(h, buf, count, &r, &o))
 		return r;
+
+	if (async && GetLastError() == ERROR_IO_PENDING &&
+			GetOverlappedResult(h, &o, &r, TRUE))
+		return r;
+
 	return -1;
 }
 
@@ -182,6 +189,11 @@ ssize_t pwrite(int fd, void *buf, size_t count, off_t offset)
 
 	if (WriteFile(h, buf, count, &r, &o))
 		return r;
+
+	if (async && GetLastError() == ERROR_IO_PENDING &&
+			GetOverlappedResult(h, &o, &r, TRUE))
+		return r;
+
 	return -1;
 }
 
@@ -423,7 +435,6 @@ void *buf;
 int quiet = 0;
 int batch_mode = 0;
 int direct = 0;
-int async = 0;
 int cached = 0;
 int randomize = 1;
 int write_test = 0;
@@ -785,7 +796,9 @@ static void aio_setup(void)
 
 static void aio_setup(void)
 {
+#ifndef __MINGW32__
 	errx(1, "asynchronous I/O not supported by this platform");
+#endif
 }
 
 #endif
@@ -822,6 +835,8 @@ int open_file(const char *path, const char *temp)
 		attr |= FILE_FLAG_RANDOM_ACCESS;
 	else
 		attr |= FILE_FLAG_SEQUENTIAL_SCAN;
+	if (async)
+		attr |= FILE_FLAG_OVERLAPPED;
 
 	h = CreateFile(file_path, GENERIC_READ | GENERIC_WRITE,
 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
