@@ -788,26 +788,28 @@ static void aio_setup(void)
 
 #ifdef __MINGW32__
 
-int create_temp(char *path, char *name)
+int open_file(const char *path, const char *temp)
 {
-	int length = strlen(path) + strlen(name) + 9;
-	char *temp = malloc(length);
-	DWORD action;
+	char *file_path = (char *)path;
+	DWORD action = OPEN_ALWAYS;
 	DWORD attr = 0;
 	HANDLE h;
 
-	if (!temp)
-		err(2, NULL);
+	if (temp) {
+		int length = strlen(path) + strlen(temp) + 9;
 
-	snprintf(temp, length, "%s\\%s", path, name);
+		file_path = malloc(length);
+		if (!file_path)
+			err(2, NULL);
 
-	if (!keep_file) {
-		strcat(temp, ".XXXXXX");
-		mktemp(temp);
-		action = CREATE_NEW;
-		attr |= FILE_ATTRIBUTE_HIDDEN | FILE_FLAG_DELETE_ON_CLOSE;
-	} else {
-		action = OPEN_ALWAYS;
+		snprintf(file_path, length, "%s\\%s", path, temp);
+
+		if (!keep_file) {
+			strcat(file_path, ".XXXXXX");
+			mktemp(file_path);
+			action = CREATE_NEW;
+			attr |= FILE_ATTRIBUTE_HIDDEN | FILE_FLAG_DELETE_ON_CLOSE;
+		}
 	}
 
 	if (!cached)
@@ -817,11 +819,13 @@ int create_temp(char *path, char *name)
 	else
 		attr |= FILE_FLAG_SEQUENTIAL_SCAN;
 
-	h = CreateFile(temp, GENERIC_READ | GENERIC_WRITE,
+	h = CreateFile(file_path, GENERIC_READ | GENERIC_WRITE,
 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 			NULL, action, attr, NULL);
 
-	free(temp);
+	if (file_path != path)
+		free(file_path);
+
 	if (h == INVALID_HANDLE_VALUE)
 		return -1;
 	return _open_osfhandle((long)h, 0);
@@ -847,19 +851,26 @@ void set_signal(void)
 
 #else /* __MINGW32__ */
 
-int create_temp(char *path, char *name)
+int open_file(const char *path, const char *temp)
 {
-	int length = strlen(path) + strlen(name) + 9;
-	char *temp = malloc(length);
-	int fd;
+	char *file_path = NULL;
+	int length, fd;
 
-	if (!temp)
+	if (!temp) {
+		fd = open(path, write_test ? O_RDWR : O_RDONLY);
+		if (fd < 0)
+			goto out;
+		goto done;
+	}
+
+	length = strlen(path) + strlen(temp) + 9;
+	file_path = malloc(length);
+	if (!file_path)
 		err(2, NULL);
-
-	snprintf(temp, length, "%s/%s", path, name);
+	snprintf(file_path, length, "%s/%s", path, temp);
 
 	if (keep_file) {
-		fd = open(temp, O_RDWR|O_CREAT, 0600);
+		fd = open(file_path, O_RDWR|O_CREAT, 0600);
 		if (fd < 0)
 			goto out;
 		goto done;
@@ -871,12 +882,12 @@ int create_temp(char *path, char *name)
 		goto done;
 #endif
 
-	strcat(temp, ".XXXXXX");
-	fd = mkstemp(temp);
+	strcat(file_path, ".XXXXXX");
+	fd = mkstemp(file_path);
 	if (fd < 0)
 		goto out;
-	if (unlink(temp))
-		err(2, "unlink \"%s\" failed", temp);
+	if (unlink(file_path))
+		err(2, "unlink \"%s\" failed", file_path);
 
 done:
 #ifdef HAVE_DIRECT_IO
@@ -884,7 +895,8 @@ done:
 		errx(2, "fcntl failed, please retry without -D");
 #endif
 out:
-	free(temp);
+	if (file_path != path)
+		free(file_path);
 	return fd;
 }
 
@@ -931,7 +943,7 @@ int main (int argc, char **argv)
 {
 	ssize_t ret_size;
 	struct stat st;
-	int ret, flags;
+	int ret;
 
 	int part_request;
 	long long this_time;
@@ -964,8 +976,6 @@ int main (int argc, char **argv)
 	else if (size > temp_wsize)
 		temp_wsize = size;
 
-	flags = O_RDONLY;
-
 #if !defined(HAVE_POSIX_FADVICE) && !defined(HAVE_NOCACHE_IO)
 # if defined(HAVE_DIRECT_IO)
 	direct |= !cached;
@@ -978,23 +988,15 @@ int main (int argc, char **argv)
 # endif
 #endif
 
-	if (write_test) {
-		flags = O_RDWR;
+	if (write_test)
 		make_request = do_pwrite;
-	}
 
 	if (async)
 		aio_setup();
 
+#ifndef HAVE_DIRECT_IO
 	if (direct)
-#ifdef HAVE_DIRECT_IO
-		flags |= O_DIRECT;
-#else
 		errx(1, "direct I/O not supported by this platform");
-#endif
-
-#ifdef __MINGW32__
-	flags |= O_BINARY;
 #endif
 
 	if (stat(path, &st))
@@ -1008,7 +1010,7 @@ int main (int argc, char **argv)
 			st.st_size = offset + temp_wsize;
 		parse_device(st.st_dev);
 	} else if (S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode)) {
-		fd = open(path, flags);
+		fd = open_file(path, NULL);
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
 
@@ -1049,7 +1051,7 @@ int main (int argc, char **argv)
 	random_memory(buf, size);
 
 	if (S_ISDIR(st.st_mode)) {
-		fd = create_temp(path, "ioping.tmp");
+		fd = open_file(path, "ioping.tmp");
 		if (fd < 0)
 			err(2, "failed to create temporary file at \"%s\"", path);
 		if (keep_file) {
@@ -1075,7 +1077,7 @@ skip_preparation:
 		if (fsync(fd))
 			err(2, "fsync failed");
 	} else if (S_ISREG(st.st_mode)) {
-		fd = open(path, flags);
+		fd = open_file(path, NULL);
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
 	}
