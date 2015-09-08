@@ -997,7 +997,8 @@ int main (int argc, char **argv)
 
 #if !defined(HAVE_POSIX_FADVICE) && !defined(HAVE_NOCACHE_IO)
 # if defined(HAVE_DIRECT_IO)
-	direct |= !cached;
+	if (!direct && !cached)
+		direct = cached = 1;
 # else
 	if (!cached && !write_test) {
 		warnx("non-cached read I/O not supported by this platform");
