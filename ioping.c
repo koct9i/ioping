@@ -252,6 +252,7 @@ void usage(void)
 			"\n"
 			"      -c <count>      stop after <count> requests\n"
 			"      -i <interval>   interval between requests (1s)\n"
+			"      -t <time>       minimal valid request time (0us)\n"
 			"      -s <size>       request size (4k)\n"
 			"      -S <wsize>      working set size (1m)\n"
 			"      -o <offset>     working set offset (0)\n"
@@ -449,6 +450,8 @@ long long interval = 1000000;
 struct timespec interval_ts;
 long long deadline = 0;
 
+long long min_valid_time = 0;
+
 ssize_t default_size = 1<<12;
 ssize_t size = 0;
 off_t wsize = 0;
@@ -459,7 +462,6 @@ int keep_file = 0;
 off_t offset = 0;
 off_t woffset = 0;
 
-int request;
 int stop_at_request = 0;
 
 int exiting = 0;
@@ -473,7 +475,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvkALRDCWBqi:w:s:S:c:o:p:P:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvkALRDCWBqi:t:w:s:S:c:o:p:P:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -508,6 +510,9 @@ void parse_options(int argc, char **argv)
 			case 'i':
 				interval = parse_time(optarg);
 				custom_interval = 1;
+				break;
+			case 't':
+				min_valid_time = parse_time(optarg);
 				break;
 			case 'w':
 				deadline = parse_time(optarg);
@@ -964,7 +969,8 @@ int main (int argc, char **argv)
 	struct stat st;
 	int ret;
 
-	int part_request;
+	int request, part_request;
+	int total_valid, part_valid;
 	long long this_time;
 	double part_min, part_max, time_min, time_max;
 	double time_sum, time_sum2, time_mdev, time_avg;
@@ -1123,9 +1129,12 @@ skip_preparation:
 	set_signal();
 
 	request = 0;
+	total_valid = 0;
 	woffset = 0;
 
 	part_request = 0;
+	part_valid = 0;
+
 	part_min = time_min = LLONG_MAX;
 	part_max = time_max = LLONG_MIN;
 	part_sum = time_sum = 0;
@@ -1168,12 +1177,15 @@ skip_preparation:
 		this_time = time_now - this_time;
 		time_next = time_now + interval;
 
-		part_sum += this_time;
-		part_sum2 += this_time * this_time;
-		if (this_time < part_min)
-			part_min = this_time;
-		if (this_time > part_max)
-			part_max = this_time;
+		if (this_time >= min_valid_time) {
+			part_valid++;
+			part_sum += this_time;
+			part_sum2 += this_time * this_time;
+			if (this_time < part_min)
+				part_min = this_time;
+			if (this_time > part_max)
+				part_max = this_time;
+		}
 
 		if (!quiet) {
 			print_size(ret_size);
@@ -1183,20 +1195,13 @@ skip_preparation:
 				print_size(device_size);
 			printf("): request=%d time=", request);
 			print_time(this_time);
+			if (this_time < min_valid_time)
+				printf(" (cache hit)");
 			printf("\n");
 		}
 
 		if ((period_request && (part_request >= period_request)) ||
 		    (period_time && (time_next >= period_deadline))) {
-			part_avg = part_sum / part_request;
-			part_mdev = sqrt(part_sum2 / part_request - part_avg * part_avg);
-
-			printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
-					part_request, part_sum,
-					1000000. * part_request / part_sum,
-					1000000. * part_request * size / part_sum,
-					part_min, part_avg,
-					part_max, part_mdev);
 
 			time_sum += part_sum;
 			time_sum2 += part_sum2;
@@ -1204,10 +1209,32 @@ skip_preparation:
 				time_min = part_min;
 			if (part_max > time_max)
 				time_max = part_max;
+
+			if (part_valid) {
+				part_avg = part_sum / part_valid;
+				part_mdev = sqrt(part_sum2 / part_valid -
+						 part_avg * part_avg);
+			} else {
+				part_min = 0;
+				part_avg = 0;
+				part_max = 0;
+				part_mdev = 0;
+				part_sum = 0.1;
+			}
+
+			printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
+					part_valid, part_sum,
+					1000000. * part_valid / part_sum,
+					1000000. * part_valid * size / part_sum,
+					part_min, part_avg,
+					part_max, part_mdev);
+
 			part_min = LLONG_MAX;
 			part_max = LLONG_MIN;
 			part_sum = part_sum2 = 0;
 			part_request = 0;
+			total_valid += part_valid;
+			part_valid = 0;
 
 			period_deadline = time_now + period_time;
 		}
@@ -1237,15 +1264,24 @@ skip_preparation:
 		time_min = part_min;
 	if (part_max > time_max)
 		time_max = part_max;
+	total_valid += part_valid;
 
-	time_avg = time_sum / request;
-	time_mdev = sqrt(time_sum2 / request - time_avg * time_avg);
+	if (total_valid) {
+		time_avg = time_sum / total_valid;
+		time_mdev = sqrt(time_sum2 / total_valid - time_avg * time_avg);
+	} else {
+		time_min = 0;
+		time_avg = 0;
+		time_max = 0;
+		time_mdev = 0;
+		time_sum = 0.1;
+	}
 
 	if (batch_mode) {
 		printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
-				request, time_sum,
-				1000000. * request / time_sum,
-				1000000. * request * size / time_sum,
+				total_valid, time_sum,
+				1000000. * total_valid / time_sum,
+				1000000. * total_valid * size / time_sum,
 				time_min, time_avg,
 				time_max, time_mdev);
 	} else if (!quiet || (!period_time && !period_request)) {
@@ -1253,15 +1289,19 @@ skip_preparation:
 		if (device_size)
 			print_size(device_size);
 		printf(") ioping statistics ---\n");
-		print_int(request);
+		print_int(total_valid);
 		printf(" requests completed in ");
 		print_time(time_sum);
 		printf(", ");
-		print_size((long long)request * size);
+		if (total_valid < request) {
+			print_int(request - total_valid);
+			printf(" cache hits, ");
+		}
+		print_size((long long)total_valid * size);
 		printf(" %s, ", write_test ? "written" : "read");
-		print_int(1000000. * request / time_sum);
+		print_int(1000000. * total_valid / time_sum);
 		printf(" iops, ");
-		print_size(1000000. * request * size / time_sum);
+		print_size(1000000. * total_valid * size / time_sum);
 		printf("/s\n");
 		printf("min/avg/max/mdev = ");
 		print_time(time_min);
