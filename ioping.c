@@ -102,6 +102,13 @@
 # define HAVE_ERR_INCLUDE
 #endif
 
+#ifdef __MINGW32__ /* Windows */
+# include <io.h>
+# include <stdarg.h>
+# include <windows.h>
+# define HAVE_DIRECT_IO
+#endif
+
 #if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
 # define HAVE_POSIX_FDATASYNC
 #endif
@@ -147,9 +154,6 @@ void warnx(const char *fmt, ...)
 #endif /* HAVE_ERR_INCLUDE */
 
 #ifdef __MINGW32__
-#include <io.h>
-#include <stdarg.h>
-#include <windows.h>
 
 ssize_t pread(int fd, void *buf, size_t count, off_t offset)
 {
@@ -812,7 +816,7 @@ int open_file(const char *path, const char *temp)
 		}
 	}
 
-	if (!cached)
+	if (direct)
 		attr |= FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH;
 	if (randomize)
 		attr |= FILE_FLAG_RANDOM_ACCESS;
