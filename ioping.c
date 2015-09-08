@@ -195,7 +195,7 @@ void srandom(unsigned int seed)
 
 long int random(void)
 {
-	return rand();
+	return rand() * (RAND_MAX + 1) + rand();
 }
 
 int nanosleep(const struct timespec *req, struct timespec *rem)
