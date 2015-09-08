@@ -442,7 +442,7 @@ int write_test = 0;
 
 ssize_t (*make_request) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
 
-int period_request = 0;
+long long period_request = 0;
 long long period_time = 0;
 
 int custom_interval, custom_deadline;
@@ -462,7 +462,7 @@ int keep_file = 0;
 off_t offset = 0;
 off_t woffset = 0;
 
-int stop_at_request = 0;
+long long stop_at_request = 0;
 
 int exiting = 0;
 
@@ -969,8 +969,8 @@ int main (int argc, char **argv)
 	struct stat st;
 	int ret;
 
-	int request, part_request;
-	int total_valid, part_valid;
+	long long request, part_request;
+	long long total_valid, part_valid;
 	long long this_time;
 	double part_min, part_max, time_min, time_max;
 	double time_sum, time_sum2, time_mdev, time_avg;
@@ -1193,7 +1193,7 @@ skip_preparation:
 					path, fstype, device);
 			if (device_size)
 				print_size(device_size);
-			printf("): request=%d time=", request);
+			printf("): request=%lu time=", (long unsigned)request);
 			print_time(this_time);
 			if (this_time < min_valid_time)
 				printf(" (cache hit)");
@@ -1222,8 +1222,8 @@ skip_preparation:
 				part_sum = 0.1;
 			}
 
-			printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
-					part_valid, part_sum,
+			printf("%lu %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
+					(unsigned long)part_valid, part_sum,
 					1000000. * part_valid / part_sum,
 					1000000. * part_valid * size / part_sum,
 					part_min, part_avg,
@@ -1278,8 +1278,8 @@ skip_preparation:
 	}
 
 	if (batch_mode) {
-		printf("%d %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
-				total_valid, time_sum,
+		printf("%lu %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
+				(unsigned long)total_valid, time_sum,
 				1000000. * total_valid / time_sum,
 				1000000. * total_valid * size / time_sum,
 				time_min, time_avg,
