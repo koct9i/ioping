@@ -30,6 +30,7 @@ Fedora: https://apps.fedoraproject.org/packages/ioping
 ArchLinux: https://www.archlinux.org/packages/community/x86_64/ioping
 AltLinux: http://www.sisyphus.ru/en/srpm/Sisyphus/ioping
 Gentoo: https://packages.gentoo.org/package/app-benchmarks/ioping
+Nix: https://github.com/NixOS/nixpkgs/blob/master/pkgs/tools/system/ioping/default.nix
 FreeBSD: http://www.freshports.org/sysutils/ioping
 OS X: https://github.com/Homebrew/homebrew/blob/master/Library/Formula/ioping.rb
 
