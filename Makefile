@@ -9,7 +9,7 @@ OBJS=$(SRCS:.c=.o)
 BINS=ioping
 MANS=ioping.1
 MANS_F=$(MANS:.1=.txt) $(MANS:.1=.pdf)
-DOCS=README LICENSE changelog
+DOCS=README.md LICENSE changelog
 SPEC=ioping.spec
 
 PACKAGE=ioping
