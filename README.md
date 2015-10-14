@@ -24,14 +24,14 @@ Supported OS
 Packages
 --------
 
-Debian: https://packages.debian.org/unstable/main/ioping
-Ubuntu: https://launchpad.net/ubuntu/+source/ioping
-Fedora: https://apps.fedoraproject.org/packages/ioping
-ArchLinux: https://www.archlinux.org/packages/community/x86_64/ioping
-AltLinux: http://www.sisyphus.ru/en/srpm/Sisyphus/ioping
-Gentoo: https://packages.gentoo.org/package/app-benchmarks/ioping
-FreeBSD: http://www.freshports.org/sysutils/ioping
-OS X: https://github.com/Homebrew/homebrew/blob/master/Library/Formula/ioping.rb
+* Debian: https://packages.debian.org/unstable/main/ioping
+* Ubuntu: https://launchpad.net/ubuntu/+source/ioping
+* Fedora: https://apps.fedoraproject.org/packages/ioping
+* ArchLinux: https://www.archlinux.org/packages/community/x86_64/ioping
+* AltLinux: http://www.sisyphus.ru/en/srpm/Sisyphus/ioping
+* Gentoo: https://packages.gentoo.org/package/app-benchmarks/ioping
+* FreeBSD: http://www.freshports.org/sysutils/ioping
+* OS X: https://github.com/Homebrew/homebrew/blob/master/Library/Formula/ioping.rb
 
 Examples
 --------
@@ -74,7 +74,7 @@ min/avg/max/mdev = 2.0/3.4/28.9/2.0 ms
 Authors
 -------
 
-Konstantin Khlebnikov <koct9i@gmail.com>
-Kir Kolyshkin <kir@openvz.org>
+* Konstantin Khlebnikov <koct9i@gmail.com>
+* Kir Kolyshkin <kir@openvz.org>
 
 Licensed under GPLv3 (or later) <http://www.gnu.org/licenses/gpl-3.0.txt>
