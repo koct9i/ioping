@@ -33,6 +33,44 @@ Gentoo: https://packages.gentoo.org/package/app-benchmarks/ioping
 FreeBSD: http://www.freshports.org/sysutils/ioping
 OS X: https://github.com/Homebrew/homebrew/blob/master/Library/Formula/ioping.rb
 
+Examples
+--------
+
+Show disk I/O latency using the default values and the current directory, until interrupted
+
+```
+$ ioping .
+4096 bytes from . (ext4 /dev/sda3): request=1 time=0.2 ms
+4096 bytes from . (ext4 /dev/sda3): request=2 time=0.2 ms
+4096 bytes from . (ext4 /dev/sda3): request=3 time=0.3 ms
+4096 bytes from . (ext4 /dev/sda3): request=4 time=12.7 ms
+4096 bytes from . (ext4 /dev/sda3): request=5 time=0.3 ms
+^C
+--- . (ext4 /dev/sda3) ioping statistics ---
+5 requests completed in 4794.0 ms, 364 iops, 1.4 MiB/s
+min/avg/max/mdev = 0.2/2.8/12.7/5.0 ms
+```
+
+Measure disk seek rate (iops, avg)
+
+```
+$ ioping -R /dev/sda
+
+--- /dev/sda (device 465.8 GiB) ioping statistics ---
+186 requests completed in 3004.6 ms, 62 iops, 0.2 MiB/s
+min/avg/max/mdev = 6.4/16.0/26.8/4.7 ms
+```
+
+Measure disk sequential speed (MiB/s)
+
+```
+$ ioping -RL /dev/sda
+
+--- /dev/sda (device 465.8 GiB) ioping statistics ---
+837 requests completed in 3004.1 ms, 292 iops, 72.9 MiB/s
+min/avg/max/mdev = 2.0/3.4/28.9/2.0 ms
+```
+
 Authors
 -------
 
