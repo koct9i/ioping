@@ -321,24 +321,22 @@ static struct suffix size_suffix[] = {
 	{ NULL,		0ll },
 };
 
+#define NSEC_PER_SEC	1000000000ll
+
 static struct suffix time_suffix[] = {
-	{ "day",	1000000ll * 60 * 60 * 24 },
-	{ "hour",	1000000ll * 60 * 60 },
-	{ "min",	1000000ll * 60 },
-	{ "s",		1000000ll },
-	{ "ms",		1000ll },
-	{ "us",		1ll },
-	{ "usec",	1ll },
-	{ "msec",	1000ll },
-	{ "",		1000000ll },
-	{ "sec",	1000000ll },
-	{ "m",		1000000ll * 60 },
-	{ "h",		1000000ll * 60 * 60 },
-	{ "week",	1000000ll * 60 * 60 * 24 * 7 },
-	{ "month",	1000000ll * 60 * 60 * 24 * 7 * 30 },
-	{ "year",	1000000ll * 60 * 60 * 24 * 7 * 365 },
-	{ "century",	1000000ll * 60 * 60 * 24 * 7 * 365 * 100 },
-	{ "millenium",	1000000ll * 60 * 60 * 24 * 7 * 365 * 1000 },
+	{ "hour",	NSEC_PER_SEC * 60 * 60 },
+	{ "min",	NSEC_PER_SEC * 60 },
+	{ "s",		NSEC_PER_SEC },
+	{ "ms",		1000000ll },
+	{ "us",		1000ll },
+	{ "ns",		1ll },
+	{ "nsec",	1ll },
+	{ "usec",	1000ll },
+	{ "msec",	1000000ll },
+	{ "",		NSEC_PER_SEC },
+	{ "sec",	NSEC_PER_SEC },
+	{ "m",		NSEC_PER_SEC * 60 },
+	{ "h",		NSEC_PER_SEC * 60 * 60 },
 	{ NULL,		0ll },
 };
 
@@ -415,16 +413,6 @@ void print_time(long long val)
 	print_suffix(val, time_suffix);
 }
 
-long long now(void)
-{
-	struct timeval tv;
-
-	if (gettimeofday(&tv, NULL))
-		err(3, "gettimeofday failed");
-
-	return tv.tv_sec * 1000000ll + tv.tv_usec;
-}
-
 char *path = NULL;
 char *fstype = "";
 char *device = "";
@@ -446,7 +434,7 @@ long long period_request = 0;
 long long period_time = 0;
 
 int custom_interval, custom_deadline;
-long long interval = 1000000;
+long long interval = NSEC_PER_SEC;
 struct timespec interval_ts;
 long long deadline = 0;
 
@@ -491,7 +479,7 @@ void parse_options(int argc, char **argv)
 				if (!custom_interval)
 					interval = 0;
 				if (!custom_deadline)
-					deadline = 3000000;
+					deadline = 3 * NSEC_PER_SEC;
 				temp_wsize = 1<<26;
 				quiet = 1;
 				break;
@@ -873,6 +861,16 @@ void set_signal(void)
 	SetConsoleCtrlHandler(sig_exit, TRUE);
 }
 
+static inline long long now(void)
+{
+	struct timeval tv;
+
+	if (gettimeofday(&tv, NULL))
+		err(3, "gettimeofday failed");
+
+	return tv.tv_sec * NSEC_PER_SEC + tv.tv_usec * 1000ll;
+}
+
 #else /* __MINGW32__ */
 
 int open_file(const char *path, const char *temp)
@@ -941,6 +939,16 @@ void set_signal(void)
 	sigaction(SIGINT, &sa, NULL);
 }
 
+static inline long long now(void)
+{
+	struct timespec ts;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &ts))
+		err(3, "clock_gettime failed");
+
+	return ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
+}
+
 #endif /* __MINGW32__ */
 
 void random_memory(void *buf, size_t len)
@@ -981,8 +989,8 @@ int main (int argc, char **argv)
 
 	parse_options(argc, argv);
 
-	interval_ts.tv_sec = interval / 1000000;
-	interval_ts.tv_nsec = (interval % 1000000) * 1000;
+	interval_ts.tv_sec = interval / NSEC_PER_SEC;
+	interval_ts.tv_nsec = interval % NSEC_PER_SEC;
 
 	if (!size)
 		size = default_size;
@@ -1224,8 +1232,10 @@ skip_preparation:
 
 			printf("%lu %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
 					(unsigned long)part_valid, part_sum,
-					1000000. * part_valid / part_sum,
-					1000000. * part_valid * size / part_sum,
+					1. * NSEC_PER_SEC *
+						part_valid / part_sum,
+					1. * NSEC_PER_SEC *
+						part_valid * size / part_sum,
 					part_min, part_avg,
 					part_max, part_mdev);
 
@@ -1280,8 +1290,10 @@ skip_preparation:
 	if (batch_mode) {
 		printf("%lu %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
 				(unsigned long)total_valid, time_sum,
-				1000000. * total_valid / time_sum,
-				1000000. * total_valid * size / time_sum,
+				1. * NSEC_PER_SEC *
+					total_valid / time_sum,
+				1. * NSEC_PER_SEC *
+					total_valid * size / time_sum,
 				time_min, time_avg,
 				time_max, time_mdev);
 	} else if (!quiet || (!period_time && !period_request)) {
@@ -1299,9 +1311,9 @@ skip_preparation:
 		}
 		print_size((long long)total_valid * size);
 		printf(" %s, ", write_test ? "written" : "read");
-		print_int(1000000. * total_valid / time_sum);
+		print_int(1. * NSEC_PER_SEC * total_valid / time_sum);
 		printf(" iops, ");
-		print_size(1000000. * total_valid * size / time_sum);
+		print_size(1. * NSEC_PER_SEC * total_valid * size / time_sum);
 		printf("/s\n");
 		printf("min/avg/max/mdev = ");
 		print_time(time_min);
