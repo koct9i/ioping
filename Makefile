@@ -27,6 +27,7 @@ CC=i686-w64-mingw32-gcc
 STRIP=i686-w64-mingw32-strip
 TARGET=win32
 BINARY:=$(BINARY:=.exe)
+LIBS=-lm
 endif
 
 all: $(BINARY)
