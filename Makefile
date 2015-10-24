@@ -6,7 +6,7 @@ MAN1DIR=$(PREFIX)/share/man/man1
 
 SRCS=ioping.c
 OBJS=$(SRCS:.c=.o)
-BINS=ioping
+BINARY=ioping
 MANS=ioping.1
 MANS_F=$(MANS:.1=.txt) $(MANS:.1=.pdf)
 DOCS=README.md LICENSE changelog
@@ -17,7 +17,7 @@ EXTRA_VERSION:=$(shell test -d .git && git describe --tags --dirty=+ | sed 's/^v
 VERSION:=$(shell sed -ne 's/\# define VERSION \"\(.*\)\"/\1/p' ioping.c)${EXTRA_VERSION}
 DISTDIR=$(PACKAGE)-$(VERSION)
 DISTFILES=$(SRCS) $(MANS) $(DOCS) $(SPEC) Makefile
-PACKFILES=$(BINS) $(MANS) $(MANS_F) $(DOCS)
+PACKFILES=$(BINARY) $(MANS) $(MANS_F) $(DOCS)
 
 STRIP=strip
 TARGET=$(shell ${CC} -dumpmachine | cut -d- -f 2)
@@ -26,23 +26,29 @@ ifdef MINGW
 CC=i686-w64-mingw32-gcc
 STRIP=i686-w64-mingw32-strip
 TARGET=win32
-BINS:=$(BINS:=.exe)
+BINARY:=$(BINARY:=.exe)
 endif
 
-all: $(BINS)
+all: $(BINARY)
 
 version:
 	@echo ${VERSION}
 
 clean:
-	$(RM) -f $(OBJS) $(BINS) $(MANS_F)
+	$(RM) -f $(OBJS) $(BINARY) $(MANS_F) ioping.tmp
 
-strip: $(BINS)
+strip: $(BINARY)
 	$(STRIP) $^
 
-install: $(BINS) $(MANS)
+test: $(BINARY)
+	./$(BINARY) -i 10ms -c 3 -s 512 -S 16k ${PWD}
+	./$(BINARY) -w 10ms -R -k -S 1m .
+	./$(BINARY) -w 10ms -RL ioping.tmp
+	rm ioping.tmp
+
+install: $(BINARY) $(MANS)
 	mkdir -p $(DESTDIR)$(BINDIR)
-	install -s -m 0755 $(BINS) $(DESTDIR)$(BINDIR)
+	install -s -m 0755 $(BINARY) $(DESTDIR)$(BINDIR)
 	mkdir -p $(DESTDIR)$(MAN1DIR)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
@@ -58,18 +64,18 @@ install: $(BINS) $(MANS)
 %.txt: %.1
 	MANWIDTH=80 man ./$< | col -b > $@
 
-$(BINS): $(OBJS)
+$(BINARY): $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 dist: $(DISTFILES)
 	tar -cz --transform='s,^,$(DISTDIR)/,S' $^ -f $(DISTDIR).tar.gz
 
 binary-tgz: $(PACKFILES)
-	${STRIP} ${BINS}
+	${STRIP} ${BINARY}
 	tar -cz --transform='s,^,$(DISTDIR)/,S' -f ${PACKAGE}-${VERSION}-${TARGET}.tgz $^
 
 binary-zip: $(PACKFILES)
-	${STRIP} ${BINS}
+	${STRIP} ${BINARY}
 	ln -s . $(DISTDIR)
 	zip ${PACKAGE}-${VERSION}-${TARGET}.zip $(addprefix $(DISTDIR)/,$^)
 	rm $(DISTDIR)
