@@ -20,7 +20,11 @@ DISTFILES=$(SRCS) $(MANS) $(DOCS) $(SPEC) Makefile
 PACKFILES=$(BINARY) $(MANS) $(MANS_F) $(DOCS)
 
 STRIP=strip
-TARGET=$(shell ${CC} -dumpmachine | cut -d- -f 2)
+TARGET=$(shell ${CC} -dumpmachine)
+
+ifneq (,$(filter %-apple-%,$TARGET))
+LIBGS=-lm
+endif
 
 ifdef MINGW
 CC=i686-w64-mingw32-gcc
