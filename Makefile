@@ -22,8 +22,8 @@ PACKFILES=$(BINARY) $(MANS) $(MANS_F) $(DOCS)
 STRIP=strip
 TARGET=$(shell ${CC} -dumpmachine)
 
-ifneq (,$(filter %-apple-%,$TARGET))
-LIBGS=-lm
+ifneq (,$(findstring -apple-,${TARGET}))
+LIBS=-lm
 endif
 
 ifdef MINGW
