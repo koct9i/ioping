@@ -1,5 +1,5 @@
 CFLAGS+=-std=gnu99 -g -Wall -Wextra -pedantic -O2 -funroll-loops -ftree-vectorize
-LIBS=-lm
+LIBS=-lm -lrt
 PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 MAN1DIR=$(PREFIX)/share/man/man1
