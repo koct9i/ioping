@@ -48,6 +48,7 @@
 #ifdef __linux__
 # include <sys/ioctl.h>
 # include <sys/mount.h>
+# define HAVE_CLOCK_GETTIME
 # define HAVE_POSIX_FADVICE
 # define HAVE_POSIX_MEMALIGN
 # define HAVE_DIRECT_IO
@@ -58,6 +59,7 @@
 
 #ifdef __gnu_hurd__
 # include <sys/ioctl.h>
+# define HAVE_CLOCK_GETTIME
 # define HAVE_POSIX_MEMALIGN
 # define HAVE_ERR_INCLUDE
 #endif
@@ -66,12 +68,14 @@
 # include <sys/ioctl.h>
 # include <sys/mount.h>
 # include <sys/disk.h>
+# define HAVE_CLOCK_GETTIME
 # define HAVE_DIRECT_IO
 # define HAVE_ERR_INCLUDE
 #endif
 
 #ifdef __DragonFly__
 # include <sys/diskslice.h>
+# define HAVE_CLOCK_GETTIME
 # define HAVE_ERR_INCLUDE
 #endif
 
@@ -81,11 +85,12 @@
 # include <sys/dkio.h>
 # include <sys/param.h>
 # include <sys/mount.h>
+# define HAVE_CLOCK_GETTIME
 # define HAVE_POSIX_MEMALIGN
 # define HAVE_ERR_INCLUDE
 #endif
 
-#ifdef __APPLE__
+#ifdef __APPLE__ /* OS X */
 # include <sys/ioctl.h>
 # include <sys/mount.h>
 # include <sys/disk.h>
@@ -97,6 +102,7 @@
 #ifdef __sun__	/* Solaris */
 # include <sys/dkio.h>
 # include <sys/vtoc.h>
+# define HAVE_CLOCK_GETTIME
 # define HAVE_DIRECT_IO
 # define O_DIRECT	O_DSYNC
 # define HAVE_ERR_INCLUDE
@@ -152,6 +158,34 @@ void warnx(const char *fmt, ...)
 }
 
 #endif /* HAVE_ERR_INCLUDE */
+
+#define NSEC_PER_SEC	1000000000ll
+
+#ifdef HAVE_CLOCK_GETTIME
+
+static inline long long now(void)
+{
+	struct timespec ts;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &ts))
+		err(3, "clock_gettime failed");
+
+	return ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
+}
+
+#else
+
+static inline long long now(void)
+{
+	struct timeval tv;
+
+	if (gettimeofday(&tv, NULL))
+		err(3, "gettimeofday failed");
+
+	return tv.tv_sec * NSEC_PER_SEC + tv.tv_usec * 1000ll;
+}
+
+#endif /* HAVE_CLOCK_GETTIME */
 
 int async = 0;
 
@@ -320,8 +354,6 @@ static struct suffix size_suffix[] = {
 	{ "page",	4096 },
 	{ NULL,		0ll },
 };
-
-#define NSEC_PER_SEC	1000000000ll
 
 static struct suffix time_suffix[] = {
 	{ "hour",	NSEC_PER_SEC * 60 * 60 },
@@ -861,16 +893,6 @@ void set_signal(void)
 	SetConsoleCtrlHandler(sig_exit, TRUE);
 }
 
-static inline long long now(void)
-{
-	struct timeval tv;
-
-	if (gettimeofday(&tv, NULL))
-		err(3, "gettimeofday failed");
-
-	return tv.tv_sec * NSEC_PER_SEC + tv.tv_usec * 1000ll;
-}
-
 #else /* __MINGW32__ */
 
 int open_file(const char *path, const char *temp)
@@ -937,16 +959,6 @@ void set_signal(void)
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_exit;
 	sigaction(SIGINT, &sa, NULL);
-}
-
-static inline long long now(void)
-{
-	struct timespec ts;
-
-	if (clock_gettime(CLOCK_MONOTONIC, &ts))
-		err(3, "clock_gettime failed");
-
-	return ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
 }
 
 #endif /* __MINGW32__ */
