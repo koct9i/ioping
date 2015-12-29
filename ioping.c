@@ -963,24 +963,40 @@ void set_signal(void)
 
 #endif /* __MINGW32__ */
 
-void random_memory(void *buf, size_t len)
-{
-	unsigned char *ptr = buf;
-	size_t i;
+static unsigned long long random_state[2];
 
-	for (i = 0; i < len; i++)
-		ptr[i] = random();
+/* xorshift128+ */
+static inline unsigned long long random64(void)
+{
+	unsigned long long s1 = random_state[0];
+	const unsigned long long s0 = random_state[1];
+	random_state[0] = s0;
+	s1 ^= s1 << 23; // a
+	random_state[1] = s1 ^ s0 ^ (s1 >> 17) ^ (s0 >> 26); // b, c
+	return random_state[1] + s0;
 }
 
-/* not so random but much faster */
-void shake_memory(void *buf, size_t len)
+static void random_init(void)
 {
-	unsigned int *ptr = buf;
-	unsigned int word = random();
-	size_t i;
+	srandom(now());
+	random_state[0] = random();
+	random_state[1] = random();
+	(void)random64();
+	(void)random64();
+}
 
-	for (i = 0, len /= 4; i < len; i++)
-		ptr[i] ^= word;
+static void random_memory(void *buf, size_t len)
+{
+	unsigned long long *ptr = buf;
+	size_t words = len >> 3;
+
+	while (words--)
+		*ptr++ = random64();
+
+	if (len & 7) {
+		unsigned long long last = random64();
+		memcpy(ptr, &last, len & 7);
+	}
 }
 
 int main (int argc, char **argv)
@@ -1094,6 +1110,8 @@ int main (int argc, char **argv)
 	if (ret)
 		errx(2, "buffer allocation failed");
 
+	random_init();
+
 	random_memory(buf, size);
 
 	if (S_ISDIR(st.st_mode)) {
@@ -1141,8 +1159,6 @@ skip_preparation:
 #endif
 	}
 
-	srandom(now());
-
 	if (deadline)
 		deadline += now();
 
@@ -1168,7 +1184,7 @@ skip_preparation:
 		part_request++;
 
 		if (randomize)
-			woffset = random() % (wsize / size) * size;
+			woffset = random64() % (wsize / size) * size;
 
 #ifdef HAVE_POSIX_FADVICE
 		if (!cached) {
@@ -1180,7 +1196,7 @@ skip_preparation:
 #endif
 
 		if (write_test)
-			shake_memory(buf, size);
+			random_memory(buf, size);
 
 		this_time = now();
 
