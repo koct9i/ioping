@@ -1,4 +1,5 @@
-CFLAGS+=-std=gnu99 -g -Wall -Wextra -pedantic -O2 -funroll-loops -ftree-vectorize
+CFLAGS ?= -g -O2 -funroll-loops -ftree-vectorize
+CFLAGS += -std=gnu99 -Wall -Wextra -pedantic
 LIBS=-lm -lrt
 PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
@@ -53,12 +54,12 @@ test: $(BINARY)
 
 install: $(BINARY) $(MANS)
 	mkdir -p $(DESTDIR)$(BINDIR)
-	install -s -m 0755 $(BINARY) $(DESTDIR)$(BINDIR)
+	install -m 0755 $(BINARY) $(DESTDIR)$(BINDIR)
 	mkdir -p $(DESTDIR)$(MAN1DIR)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -DEXTRA_VERSION=\"${EXTRA_VERSION}\" -c -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DEXTRA_VERSION=\"${EXTRA_VERSION}\" -c -o $@ $<
 
 %.ps: %.1
 	man -t ./$< > $@

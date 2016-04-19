@@ -48,6 +48,7 @@
 #ifdef __linux__
 # include <sys/ioctl.h>
 # include <sys/mount.h>
+# include <sys/sysmacros.h>
 # define HAVE_CLOCK_GETTIME
 # define HAVE_POSIX_FADVICE
 # define HAVE_POSIX_MEMALIGN
