@@ -58,7 +58,7 @@ install: $(BINARY) $(MANS)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -DEXTRA_VERSION=\"${EXTRA_VERSION}\" -c -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DEXTRA_VERSION=\"${EXTRA_VERSION}\" -c -o $@ $<
 
 %.ps: %.1
 	man -t ./$< > $@
