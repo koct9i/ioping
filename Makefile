@@ -1,4 +1,5 @@
-CFLAGS+=-std=gnu99 -g -Wall -Wextra -pedantic -O2 -funroll-loops -ftree-vectorize
+CFLAGS ?= -g -O2 -funroll-loops -ftree-vectorize
+CFLAGS += -std=gnu99 -Wall -Wextra -pedantic
 LIBS=-lm -lrt
 PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
