@@ -54,7 +54,7 @@ test: $(BINARY)
 
 install: $(BINARY) $(MANS)
 	mkdir -p $(DESTDIR)$(BINDIR)
-	install -s -m 0755 $(BINARY) $(DESTDIR)$(BINDIR)
+	install -m 0755 $(BINARY) $(DESTDIR)$(BINDIR)
 	mkdir -p $(DESTDIR)$(MAN1DIR)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
