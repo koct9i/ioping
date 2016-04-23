@@ -1186,6 +1186,9 @@ skip_preparation:
 	period_deadline = time_now + period_time;
 
 	while (!exiting) {
+		if (interval)
+			nanosleep(&interval_ts, NULL);
+
 		request++;
 		part_request++;
 
@@ -1298,9 +1301,6 @@ skip_preparation:
 
 		if (deadline && time_next >= deadline)
 			break;
-
-		if (interval)
-			nanosleep(&interval_ts, NULL);
 	}
 
 	time_sum += part_sum;
