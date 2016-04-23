@@ -1146,13 +1146,17 @@ skip_preparation:
 			err(2, "failed to open \"%s\"", path);
 	}
 
-	if (!cached) {
+	/* No readahead for non-cached I/O, we'll invalidate it anyway */
+	if (randomize || !cached) {
 #ifdef HAVE_POSIX_FADVICE
 		ret = posix_fadvise(fd, offset, wsize, POSIX_FADV_RANDOM);
 		if (ret)
-			err(2, "fadvise(RANDOM) failed, "
-			       "please retry with option -C");
+			warn("fadvise(RANDOM) failed, "
+			     "operations might perform unneeded readahead");
 #endif
+	}
+
+	if (!cached) {
 #ifdef HAVE_NOCACHE_IO
 		ret = fcntl(fd, F_NOCACHE, 1);
 		if (ret)
