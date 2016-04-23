@@ -709,8 +709,10 @@ ssize_t do_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
 	ret = pwrite(fd, buf, nbytes, offset);
 	if (ret < 0)
 		return ret;
+
 	if (!cached && fdatasync(fd) < 0)
-		return -1;
+		err(3, "fdatasync failed, please retry with option -C");
+
 	return ret;
 }
 
@@ -790,7 +792,7 @@ static ssize_t aio_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
 	}
 
 	if (!cached && fdatasync(fd) < 0)
-		return -1;
+		err(3, "fdatasync failed, please retry with option -C");
 
 	return aio_ev.res;
 
@@ -937,7 +939,8 @@ int open_file(const char *path, const char *temp)
 done:
 #ifdef HAVE_DIRECT_IO
 	if (direct && fcntl(fd, F_SETFL, O_DIRECT))
-		errx(2, "fcntl failed, please retry without -D");
+		err(2, "fcntl(O_DIRECT) failed, "
+		       "please retry without option -D");
 #endif
 out:
 	if (file_path != path)
@@ -1040,11 +1043,13 @@ int main (int argc, char **argv)
 
 #if !defined(HAVE_POSIX_FADVICE) && !defined(HAVE_NOCACHE_IO)
 # if defined(HAVE_DIRECT_IO)
-	if (!direct && !cached)
+	if (!direct && !cached) {
+		warnx("non-cached I/O not supported, will use direct I/O");
 		direct = cached = 1;
+	}
 # else
 	if (!cached && !write_test) {
-		warnx("non-cached read I/O not supported by this platform");
+		warnx("non-cached I/O not supported by this platform");
 		warnx("you can use write I/O to get reliable results");
 		cached = 1;
 	}
@@ -1087,12 +1092,6 @@ int main (int argc, char **argv)
 			device_size = st.st_size;
 			fstype = "block";
 			device = "device ";
-		}
-
-		if (!cached && write_test && fdatasync(fd)) {
-			warnx("fdatasync not supported by \"%s\", "
-			      "enable cached requests", path);
-			cached = 1;
 		}
 	} else {
 		errx(2, "unsupported destination: \"%s\"", path);
@@ -1151,12 +1150,14 @@ skip_preparation:
 #ifdef HAVE_POSIX_FADVICE
 		ret = posix_fadvise(fd, offset, wsize, POSIX_FADV_RANDOM);
 		if (ret)
-			err(2, "fadvise failed");
+			err(2, "fadvise(RANDOM) failed, "
+			       "please retry with option -C");
 #endif
 #ifdef HAVE_NOCACHE_IO
 		ret = fcntl(fd, F_NOCACHE, 1);
 		if (ret)
-			err(2, "fcntl nocache failed");
+			err(2, "fcntl(F_NOCACHE) failed, "
+			       "please retry with option -C");
 #endif
 	}
 
@@ -1190,9 +1191,10 @@ skip_preparation:
 #ifdef HAVE_POSIX_FADVICE
 		if (!cached) {
 			ret = posix_fadvise(fd, offset + woffset, size,
-					POSIX_FADV_DONTNEED);
+					    POSIX_FADV_DONTNEED);
 			if (ret)
-				err(3, "fadvise failed");
+				err(3, "fadvise(DONTNEED) failed, "
+				       "please retry with option -C");
 		}
 #endif
 
