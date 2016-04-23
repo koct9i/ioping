@@ -52,6 +52,7 @@
 # define HAVE_CLOCK_GETTIME
 # define HAVE_POSIX_FADVICE
 # define HAVE_POSIX_MEMALIGN
+# define HAVE_MKOSTEMP
 # define HAVE_DIRECT_IO
 # define HAVE_LINUX_ASYNC_IO
 # define HAVE_ERR_INCLUDE
@@ -62,6 +63,7 @@
 # include <sys/ioctl.h>
 # define HAVE_CLOCK_GETTIME
 # define HAVE_POSIX_MEMALIGN
+# define HAVE_MKOSTEMP
 # define HAVE_ERR_INCLUDE
 #endif
 
@@ -70,6 +72,7 @@
 # include <sys/mount.h>
 # include <sys/disk.h>
 # define HAVE_CLOCK_GETTIME
+# define HAVE_MKOSTEMP
 # define HAVE_DIRECT_IO
 # define HAVE_ERR_INCLUDE
 #endif
@@ -77,6 +80,7 @@
 #ifdef __DragonFly__
 # include <sys/diskslice.h>
 # define HAVE_CLOCK_GETTIME
+# define HAVE_MKOSTEMP
 # define HAVE_ERR_INCLUDE
 #endif
 
@@ -88,6 +92,7 @@
 # include <sys/mount.h>
 # define HAVE_CLOCK_GETTIME
 # define HAVE_POSIX_MEMALIGN
+# define HAVE_MKOSTEMP
 # define HAVE_ERR_INCLUDE
 #endif
 
@@ -114,6 +119,7 @@
 # include <stdarg.h>
 # include <windows.h>
 # define HAVE_DIRECT_IO
+# define HAVE_MKOSTEMP /* not required */
 #endif
 
 #if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
@@ -187,6 +193,19 @@ static inline long long now(void)
 }
 
 #endif /* HAVE_CLOCK_GETTIME */
+
+#ifndef HAVE_MKOSTEMP
+int mkostemp(char *template, int flags)
+{
+	int fd;
+
+	fd = mkstemp(template);
+	if (!flags || fd < 0)
+		return fd;
+	close(fd);
+	return open(template, O_RDWR | flags);
+}
+#endif
 
 int async = 0;
 
@@ -912,10 +931,7 @@ int open_file(const char *path, const char *temp)
 {
 	char *file_path = NULL;
 	int length, fd;
-	int flags = O_RDWR;
-
-	if (!temp && !write_test)
-		flags = O_RDONLY;
+	int flags = 0;
 
 #ifdef O_SYNC
 	if (syncio)
@@ -928,7 +944,7 @@ int open_file(const char *path, const char *temp)
 #endif
 
 	if (!temp) {
-		fd = open(path, flags);
+		fd = open(path, (write_test ? O_RDWR : O_RDONLY) | flags);
 		if (fd < 0)
 			goto out;
 		goto done;
@@ -941,14 +957,14 @@ int open_file(const char *path, const char *temp)
 	snprintf(file_path, length, "%s/%s", path, temp);
 
 	if (keep_file) {
-		fd = open(file_path, flags | O_CREAT, 0600);
+		fd = open(file_path, O_RDWR | O_CREAT | flags, 0600);
 		if (fd < 0)
 			goto out;
 		goto done;
 	}
 
 #ifdef O_TMPFILE
-	fd = open(path, flags | O_TMPFILE, 0600);
+	fd = open(path, O_RDWR | O_TMPFILE | flags, 0600);
 	if (fd >= 0)
 		goto done;
 #endif
