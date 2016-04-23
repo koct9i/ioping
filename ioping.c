@@ -281,7 +281,7 @@ int fdatasync(int fd)
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-ABCDRLWkq] [-c count] [-i interval] [-s size] [-S wsize]\n"
+			" Usage: ioping [-ABCDRLWYykq] [-c count] [-i interval] [-s size] [-S wsize]\n"
 			"               [-o offset] [-w deadline] [-pP period] directory|file|device\n"
 			"        ioping -h | -v\n"
 			"\n"
@@ -295,12 +295,14 @@ void usage(void)
 			"      -p <period>     print raw statistics for every <period> requests\n"
 			"      -P <period>     print raw statistics for every <period> in time\n"
 			"      -A              use asynchronous I/O\n"
-			"      -C              use cached I/O\n"
+			"      -C              use cached I/O (no cache flush/drop)\n"
 			"      -B              print final statistics in raw format\n"
-			"      -D              use direct I/O\n"
+			"      -D              use direct I/O (O_DIRECT)\n"
 			"      -R              seek rate test\n"
 			"      -L              use sequential operations\n"
 			"      -W              use write I/O (please read manpage)\n"
+			"      -Y              use sync I/O (O_SYNC)\n"
+			"      -y              use data sync I/O (O_DSYNC)\n"
 			"      -k              keep and reuse temporary file (ioping.tmp)\n"
 			"      -q              suppress human-readable output\n"
 			"      -h              display this message and exit\n"
@@ -458,6 +460,8 @@ int quiet = 0;
 int batch_mode = 0;
 int direct = 0;
 int cached = 0;
+int syncio = 0;
+int data_syncio = 0;
 int randomize = 1;
 int write_test = 0;
 
@@ -496,7 +500,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvkALRDCWBqi:t:w:s:S:c:o:p:P:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvkALRDCWYBqyi:t:w:s:S:c:o:p:P:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -527,6 +531,12 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'W':
 				write_test++;
+				break;
+			case 'Y':
+				syncio = 1;
+				break;
+			case 'y':
+				data_syncio = 1;
 				break;
 			case 'i':
 				interval = parse_time(optarg);
@@ -902,9 +912,23 @@ int open_file(const char *path, const char *temp)
 {
 	char *file_path = NULL;
 	int length, fd;
+	int flags = O_RDWR;
+
+	if (!temp && !write_test)
+		flags = O_RDONLY;
+
+#ifdef O_SYNC
+	if (syncio)
+		flags |= O_SYNC;
+#endif
+
+#ifdef O_DSYNC
+	if (data_syncio)
+		flags |= O_DSYNC;
+#endif
 
 	if (!temp) {
-		fd = open(path, write_test ? O_RDWR : O_RDONLY);
+		fd = open(path, flags);
 		if (fd < 0)
 			goto out;
 		goto done;
@@ -917,20 +941,20 @@ int open_file(const char *path, const char *temp)
 	snprintf(file_path, length, "%s/%s", path, temp);
 
 	if (keep_file) {
-		fd = open(file_path, O_RDWR|O_CREAT, 0600);
+		fd = open(file_path, flags | O_CREAT, 0600);
 		if (fd < 0)
 			goto out;
 		goto done;
 	}
 
 #ifdef O_TMPFILE
-	fd = open(path, O_RDWR|O_TMPFILE, 0600);
+	fd = open(path, flags | O_TMPFILE, 0600);
 	if (fd >= 0)
 		goto done;
 #endif
 
 	strcat(file_path, ".XXXXXX");
-	fd = mkstemp(file_path);
+	fd = mkostemp(file_path, flags);
 	if (fd < 0)
 		goto out;
 	if (unlink(file_path))
@@ -1065,6 +1089,16 @@ int main (int argc, char **argv)
 #ifndef HAVE_DIRECT_IO
 	if (direct)
 		errx(1, "direct I/O not supported by this platform");
+#endif
+
+#ifndef O_SYNC
+	if (syncio)
+		errx(1, "sync I/O not supported by this platform");
+#endif
+
+#ifndef O_DSYNC
+	if (data_syncio)
+		errx(1, "data sync I/O not supported by this platform");
 #endif
 
 	if (stat(path, &st))
