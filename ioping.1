@@ -171,17 +171,17 @@ Error during runtime.
 .B ioping -p 100 -c 200 -i 0 -q .
 .ad l
 .br
-\f(CW100 26694 3746 15344272 188 267 1923 228
+\f(CW100 26694 3746 15344272 188 267 1923 228 0 26694
 .br
-100 24165 4138 16950134 190 242 2348 214
+100 24165 4138 16950134 190 242 2348 214 0 24165
 .br
-(1) (2)   (3)  (4)      (5) (6) (7)  (8)
+(1) (2)   (3)  (4)      (5) (6) (7)  (8) (9) (10)
 .br
 
 .br
-(1) number of requests
+(1) count of requests
 .br
-(2) serving time         (usec)
+(2) running time         (usec)
 .br
 (3) requests per second  (iops)
 .br
@@ -194,6 +194,10 @@ Error during runtime.
 (7) maximum request time (usec)
 .br
 (8) request time standard deviation (usec)
+.br
+(9) count of cache hits  (see option -t)
+.br
+(10) total running time  (usec)
 .SH EXAMPLES
 .TP
 .B ioping .

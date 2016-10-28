@@ -1051,11 +1051,11 @@ int main (int argc, char **argv)
 
 	long long request, part_request;
 	long long total_valid, part_valid;
-	long long this_time;
+	long long time_start, time_total, this_time;
 	double part_min, part_max, time_min, time_max;
 	double time_sum, time_sum2, time_mdev, time_avg;
 	double part_sum, part_sum2, part_mdev, part_avg;
-	long long time_now, time_next, period_deadline;
+	long long time_now, time_next, part_start, period_deadline;
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
 
@@ -1215,9 +1215,6 @@ skip_preparation:
 #endif
 	}
 
-	if (deadline)
-		deadline += now();
-
 	set_signal();
 
 	request = 0;
@@ -1232,8 +1229,13 @@ skip_preparation:
 	part_sum = time_sum = 0;
 	part_sum2 = time_sum2 = 0;
 
-	time_now = now();
-	period_deadline = time_now + period_time;
+	time_start = now();
+	part_start = time_start;
+
+	if (deadline)
+		deadline += time_start;
+
+	period_deadline = time_start + period_time;
 
 	while (!exiting) {
 		request++;
@@ -1315,14 +1317,16 @@ skip_preparation:
 				part_sum = 0.1;
 			}
 
-			printf("%lu %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
+			printf("%lu %.0f %.0f %.0f %.0f %.0f %.0f %.0f %lu %lu\n",
 					(unsigned long)part_valid, part_sum,
 					1. * NSEC_PER_SEC *
 						part_valid / part_sum,
 					1. * NSEC_PER_SEC *
 						part_valid * size / part_sum,
 					part_min, part_avg,
-					part_max, part_mdev);
+					part_max, part_mdev,
+					(unsigned long)(part_request - part_valid),
+					(unsigned long)(time_now - part_start));
 
 			part_min = LLONG_MAX;
 			part_max = LLONG_MIN;
@@ -1331,7 +1335,8 @@ skip_preparation:
 			total_valid += part_valid;
 			part_valid = 0;
 
-			period_deadline = time_now + period_time;
+			part_start = time_now;
+			period_deadline = part_start + period_time;
 		}
 
 		if (!randomize) {
@@ -1353,6 +1358,11 @@ skip_preparation:
 			nanosleep(&interval_ts, NULL);
 	}
 
+	time_now = now();
+	time_total = time_now - time_start;
+	if (!time_total)
+		time_total = 1;
+
 	time_sum += part_sum;
 	time_sum2 += part_sum2;
 	if (part_min < time_min)
@@ -1373,14 +1383,16 @@ skip_preparation:
 	}
 
 	if (batch_mode) {
-		printf("%lu %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",
+		printf("%lu %.0f %.0f %.0f %.0f %.0f %.0f %.0f %lu %lu\n",
 				(unsigned long)total_valid, time_sum,
 				1. * NSEC_PER_SEC *
 					total_valid / time_sum,
 				1. * NSEC_PER_SEC *
 					total_valid * size / time_sum,
 				time_min, time_avg,
-				time_max, time_mdev);
+				time_max, time_mdev,
+				(unsigned long)(request - total_valid),
+				(unsigned long)time_total);
 	} else if (!quiet || (!period_time && !period_request)) {
 		printf("\n--- %s (%s %s", path, fstype, device);
 		if (device_size)
@@ -1400,6 +1412,19 @@ skip_preparation:
 		printf(" iops, ");
 		print_size(1. * NSEC_PER_SEC * total_valid * size / time_sum);
 		printf("/s\n");
+
+		printf("total ");
+		print_int(request);
+		printf(" requests in ");
+		print_time(time_total);
+		printf(", ");
+		print_size((long long)request * size);
+		printf(", ");
+		print_int(1. * NSEC_PER_SEC * request / time_total);
+		printf(" iops, ");
+		print_size(1. * NSEC_PER_SEC * request * size / time_total);
+		printf("/s\n");
+
 		printf("min/avg/max/mdev = ");
 		print_time(time_min);
 		printf(" / ");
