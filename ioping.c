@@ -306,6 +306,7 @@ void usage(void)
 			"\n"
 			"      -c <count>      stop after <count> requests\n"
 			"      -i <interval>   interval between requests (1s)\n"
+			"      -l <speed>      speed limit in bytes per second\n"
 			"      -t <time>       minimal valid request time (0us)\n"
 			"      -s <size>       request size (4k)\n"
 			"      -S <wsize>      working set size (1m)\n"
@@ -493,6 +494,7 @@ int custom_interval, custom_deadline;
 long long interval = NSEC_PER_SEC;
 struct timespec interval_ts;
 long long deadline = 0;
+long long speed_limit = 0;
 
 long long min_valid_time = 0;
 
@@ -519,7 +521,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvkALRDCWYBqyi:t:w:s:S:c:o:p:P:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvkALRDCWYBqyi:t:w:s:S:c:o:p:P:l:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -530,6 +532,9 @@ void parse_options(int argc, char **argv)
 			case 'L':
 				randomize = 0;
 				default_size = 1<<18;
+				break;
+			case 'l':
+				speed_limit = parse_size(optarg);
 				break;
 			case 'R':
 				if (!custom_interval)
@@ -1061,14 +1066,17 @@ int main (int argc, char **argv)
 
 	parse_options(argc, argv);
 
-	interval_ts.tv_sec = interval / NSEC_PER_SEC;
-	interval_ts.tv_nsec = interval % NSEC_PER_SEC;
-
 	if (!size)
 		size = default_size;
 
 	if (size <= 0)
-		errx(1, "request size must be greather than zero");
+		errx(1, "request size must be greater than zero");
+
+	if (custom_interval && speed_limit)
+		errx(1, "speed limit and interval cannot be set simultaneously");
+
+	if (speed_limit)
+		interval = size * NSEC_PER_SEC / speed_limit;
 
 #ifdef MAX_RW_COUNT
 	if (size > MAX_RW_COUNT)
@@ -1237,6 +1245,8 @@ skip_preparation:
 
 	period_deadline = time_start + period_time;
 
+	time_next = time_start;
+
 	while (!exiting) {
 		request++;
 		part_request++;
@@ -1269,8 +1279,12 @@ skip_preparation:
 			errx(3, "request returned more than expected: %zu", ret_size);
 
 		time_now = now();
+
+		time_next += interval;
+		if ((time_now - time_next) > 0)
+			time_next = time_now;
+
 		this_time = time_now - this_time;
-		time_next = time_now + interval;
 
 		if (this_time >= min_valid_time) {
 			part_valid++;
@@ -1354,8 +1368,13 @@ skip_preparation:
 		if (deadline && time_next >= deadline)
 			break;
 
-		if (interval)
+		if ((time_next - time_now) > 0) {
+			long long delta = time_next - time_now;
+
+			interval_ts.tv_sec = delta / NSEC_PER_SEC;
+			interval_ts.tv_nsec = delta % NSEC_PER_SEC;
 			nanosleep(&interval_ts, NULL);
+		}
 	}
 
 	time_now = now();

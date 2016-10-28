@@ -6,6 +6,7 @@ ioping \- simple disk I/O latency monitoring tool
 .OP \-ABCDLRWYykq
 .OP \-c count
 .OP \-i interval
+.OP \-l speed
 .OP \-t time
 .OP \-s size
 .OP \-S wsize
@@ -30,6 +31,9 @@ Stop after \fIcount\fR requests.
 .TP
 .BI \-i \ interval
 Set time between requests to \fIinterval\fR (\fB1s\fR).
+.TP
+.BI \-l \ speed
+Set \fIspeed\fR limit in bytes per second. Set interval to request-size / speed.
 .TP
 .BI \-t \ time
 Minimal valid request time for cache misses (\fB0us\fR).
