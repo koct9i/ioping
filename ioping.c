@@ -321,6 +321,7 @@ void usage(void)
 			"      -R              seek rate test\n"
 			"      -L              use sequential operations\n"
 			"      -W              use write I/O (please read manpage)\n"
+			"      -G              read-write ping-pong mode\n"
 			"      -Y              use sync I/O (O_SYNC)\n"
 			"      -y              use data sync I/O (O_DSYNC)\n"
 			"      -k              keep and reuse temporary file (ioping.tmp)\n"
@@ -484,8 +485,7 @@ int syncio = 0;
 int data_syncio = 0;
 int randomize = 1;
 int write_test = 0;
-
-ssize_t (*make_request) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
+int write_read_test = 0;
 
 long long period_request = 0;
 long long period_time = 0;
@@ -521,7 +521,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvkALRDCWYBqyi:t:w:s:S:c:o:p:P:l:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvkALRDCWGYBqyi:t:w:s:S:c:o:p:P:l:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -555,6 +555,10 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'W':
 				write_test++;
+				break;
+			case 'G':
+				write_test++;
+				write_read_test = 1;
 				break;
 			case 'Y':
 				syncio = 1;
@@ -750,6 +754,10 @@ ssize_t do_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
 	return ret;
 }
 
+ssize_t (*make_pread) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
+ssize_t (*make_pwrite) (int fd, void *buf, size_t nbytes, off_t offset) = do_pwrite;
+ssize_t (*make_request) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
+
 #ifdef HAVE_LINUX_ASYNC_IO
 
 #include <sys/syscall.h>
@@ -851,7 +859,8 @@ static void aio_setup(void)
 	if (io_setup(1, &aio_ctx))
 		err(2, "aio setup failed");
 
-	make_request = write_test ? aio_pwrite : aio_pread;
+	make_pread = aio_pread;
+	make_pwrite = aio_pwrite;
 }
 
 #else
@@ -1104,11 +1113,10 @@ int main (int argc, char **argv)
 # endif
 #endif
 
-	if (write_test)
-		make_request = do_pwrite;
-
 	if (async)
 		aio_setup();
+
+	make_request = write_test ? make_pwrite : make_pread;
 
 #ifndef HAVE_DIRECT_IO
 	if (direct)
@@ -1264,6 +1272,11 @@ skip_preparation:
 		}
 #endif
 
+		if (write_read_test) {
+			write_test = request & 1;
+			make_request = write_test ? make_pwrite : make_pread;
+		}
+
 		if (write_test)
 			random_memory(buf, size);
 
@@ -1298,7 +1311,7 @@ skip_preparation:
 
 		if (!quiet) {
 			print_size(ret_size);
-			printf(" %s %s (%s %s", write_test ? "to" : "from",
+			printf(" %s %s (%s %s", write_test ? ">>>" : "<<<",
 					path, fstype, device);
 			if (device_size)
 				print_size(device_size);
@@ -1426,7 +1439,8 @@ skip_preparation:
 			printf(" cache hits, ");
 		}
 		print_size((long long)total_valid * size);
-		printf(" %s, ", write_test ? "written" : "read");
+		printf(" %s, ", write_read_test ? "transferred" :
+				write_test ? "written" : "read");
 		print_int(1. * NSEC_PER_SEC * total_valid / time_sum);
 		printf(" iops, ");
 		print_size(1. * NSEC_PER_SEC * total_valid * size / time_sum);

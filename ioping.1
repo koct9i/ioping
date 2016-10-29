@@ -3,7 +3,7 @@
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
-.OP \-ABCDLRWYykq
+.OP \-ABCDLRWGYykq
 .OP \-c count
 .OP \-i interval
 .OP \-l speed
@@ -86,6 +86,9 @@ Use writes rather than reads. Safe for directory target. Write I/O gives
 more reliable results for systems where non-cached reads are not supported or
 cached at some level. Might be \fB*DANGEROUS*\fR for file/device: it will
 shred your data. In this case should be repeated tree times (\fB-WWW\fR).
+.TP
+.B \-G
+Alternate read and write requests.
 .TP
 .B \-Y
 Use sync I/O (see \fBO_SYNC\fR in \fBopen\fR(2)).
