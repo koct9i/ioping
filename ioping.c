@@ -1376,7 +1376,7 @@ skip_preparation:
 						part_valid * size / part_sum,
 					part_min, part_avg,
 					part_max, part_mdev,
-					(unsigned long)(part_request - part_valid),
+					(unsigned long)part_request,
 					(unsigned long)(time_now - part_start));
 
 			part_min = LLONG_MAX;
@@ -1447,7 +1447,7 @@ skip_preparation:
 					total_valid * size / time_sum,
 				time_min, time_avg,
 				time_max, time_mdev,
-				(unsigned long)(request - total_valid),
+				(unsigned long)request,
 				(unsigned long)time_total);
 	} else if (!quiet || (!period_time && !period_request)) {
 		printf("\n--- %s (%s %s", path, fstype, device);
@@ -1458,14 +1458,6 @@ skip_preparation:
 		printf(" requests completed in ");
 		print_time(time_sum);
 		printf(", ");
-		if (too_fast) {
-			print_int(too_fast);
-			printf(" too fast, ");
-		}
-		if (too_slow) {
-			print_int(too_slow);
-			printf(" too slow, ");
-		}
 		print_size((long long)total_valid * size);
 		printf(" %s, ", write_read_test ? "transferred" :
 				write_test ? "written" : "read");
@@ -1474,6 +1466,14 @@ skip_preparation:
 		print_size(1. * NSEC_PER_SEC * total_valid * size / time_sum);
 		printf("/s\n");
 
+		if (too_fast) {
+			print_int(too_fast);
+			printf(" too fast, ");
+		}
+		if (too_slow) {
+			print_int(too_slow);
+			printf(" too slow, ");
+		}
 		printf("total ");
 		print_int(request);
 		printf(" requests in ");
