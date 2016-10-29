@@ -308,6 +308,7 @@ void usage(void)
 			"      -i <interval>   interval between requests (1s)\n"
 			"      -l <speed>      speed limit in bytes per second\n"
 			"      -t <time>       minimal valid request time (0us)\n"
+			"      -T <time>       maximum valid request time\n"
 			"      -s <size>       request size (4k)\n"
 			"      -S <wsize>      working set size (1m)\n"
 			"      -o <offset>     working set offset (0)\n"
@@ -497,6 +498,7 @@ long long deadline = 0;
 long long speed_limit = 0;
 
 long long min_valid_time = 0;
+long long max_valid_time = LLONG_MAX;
 
 ssize_t default_size = 1<<12;
 ssize_t size = 0;
@@ -521,7 +523,7 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvkALRDCWGYBqyi:t:w:s:S:c:o:p:P:l:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:")) != -1) {
 		switch (opt) {
 			case 'h':
 				usage();
@@ -572,6 +574,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 't':
 				min_valid_time = parse_time(optarg);
+				break;
+			case 'T':
+				max_valid_time = parse_time(optarg);
 				break;
 			case 'w':
 				deadline = parse_time(optarg);
@@ -1064,6 +1069,7 @@ int main (int argc, char **argv)
 	int ret;
 
 	long long request, part_request;
+	long long too_fast = 0, too_slow = 0;
 	long long total_valid, part_valid;
 	long long time_start, time_total, this_time;
 	double part_min, part_max, time_min, time_max;
@@ -1299,7 +1305,13 @@ skip_preparation:
 
 		this_time = time_now - this_time;
 
-		if (this_time >= min_valid_time) {
+		if (request == 1) {
+			/* warmup */
+		} else if (this_time < min_valid_time) {
+			too_fast++;
+		} else if (this_time > max_valid_time) {
+			too_slow++;
+		} else {
 			part_valid++;
 			part_sum += this_time;
 			part_sum2 += this_time * this_time;
@@ -1317,8 +1329,20 @@ skip_preparation:
 				print_size(device_size);
 			printf("): request=%lu time=", (long unsigned)request);
 			print_time(this_time);
-			if (this_time < min_valid_time)
-				printf(" (cache hit)");
+			if (request == 1) {
+				printf(" (warmup)");
+			} else if (this_time < min_valid_time) {
+				printf(" (too fast)");
+			} else if (this_time > max_valid_time) {
+				printf(" (too slow)");
+			} else if (part_valid > 5 && part_min < part_max) {
+				int percent = (this_time - part_min) * 100 /
+						(part_max - part_min);
+				if (percent < 5)
+					printf(" (fast)");
+				else if (percent > 95)
+					printf(" (slow)");
+			}
 			printf("\n");
 		}
 
@@ -1434,9 +1458,13 @@ skip_preparation:
 		printf(" requests completed in ");
 		print_time(time_sum);
 		printf(", ");
-		if (total_valid < request) {
-			print_int(request - total_valid);
-			printf(" cache hits, ");
+		if (too_fast) {
+			print_int(too_fast);
+			printf(" too fast, ");
+		}
+		if (too_slow) {
+			print_int(too_slow);
+			printf(" too slow, ");
 		}
 		print_size((long long)total_valid * size);
 		printf(" %s, ", write_read_test ? "transferred" :

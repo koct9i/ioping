@@ -8,6 +8,7 @@ ioping \- simple disk I/O latency monitoring tool
 .OP \-i interval
 .OP \-l speed
 .OP \-t time
+.OP \-T time
 .OP \-s size
 .OP \-S wsize
 .OP \-o offset
@@ -36,8 +37,12 @@ Set time between requests to \fIinterval\fR (\fB1s\fR).
 Set \fIspeed\fR limit in bytes per second. Set interval to request-size / speed.
 .TP
 .BI \-t \ time
-Minimal valid request time for cache misses (\fB0us\fR).
-Cache hits are ignored in statistics.
+Minimal valid request time (\fB0us\fR).
+Too fast requests are ignored in statistics.
+.TP
+.BI \-T \ time
+Maximum valid request time.
+Too slow requests are ignored in statistics.
 .TP
 .BI \-s \ size
 Request size (\fB4k\fR).
