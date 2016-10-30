@@ -1070,20 +1070,98 @@ static void random_memory(void *buf, size_t len)
 	}
 }
 
+struct statistics {
+	long long start, finish, load_time;
+	long long count, valid, too_slow, too_fast;
+	long long min, max;
+	double sum, sum2, avg, mdev;
+	double speed, iops, load_speed, load_iops;
+	long long size, load_size;
+};
+
+static void start_statistics(struct statistics *s, unsigned long long start) {
+	memset(s, 0, sizeof(*s));
+	s->min = LLONG_MAX;
+	s->max = LLONG_MIN;
+	s->start = start;
+}
+
+static void add_statistics(struct statistics *s, long long val) {
+	s->count++;
+	if (val < min_valid_time) {
+		s->too_fast++;
+	} else if (val > max_valid_time) {
+		s->too_slow++;
+	} else {
+		s->valid++;
+		s->sum += val;
+		s->sum2 += (double)val * val;
+		if (val < s->min)
+			s->min = val;
+		if (val > s->max)
+			s->max = val;
+	}
+}
+
+static void merge_statistics(struct statistics *s, struct statistics *o) {
+	s->count += o->count;
+	s->too_fast += o->too_fast;
+	s->too_slow += o->too_slow;
+	if (o->valid) {
+		s->valid += o->valid;
+		s->sum += o->sum;
+		s->sum2 += o->sum2;
+		if (o->min < s->min)
+			s->min = o->min;
+		if (o->max > s->max)
+			s->max = o->max;
+	}
+}
+
+static void finish_statistics(struct statistics *s, unsigned long long finish) {
+	s->finish = finish;
+	s->load_time = finish - s->start;
+
+	if (s->valid) {
+		s->avg = s->sum / s->valid;
+		s->mdev = sqrt(s->sum2 / s->valid - s->avg * s->avg);
+	} else {
+		s->min = 0;
+		s->max = 0;
+	}
+
+	if (s->sum)
+		s->iops = (double)NSEC_PER_SEC * s->valid / s->sum;
+
+	if (s->load_time)
+		s->load_iops = (double)NSEC_PER_SEC * s->count / s->load_time;
+
+	s->speed = s->iops * size;
+	s->load_speed = s->load_iops * size;
+	s->size = s->valid * size;
+	s->load_size = s->count * size;
+}
+
+static void dump_statistics(struct statistics *s) {
+	printf("%lu %.0f %.0f %.0f %lu %.0f %lu %.0f %lu %lu\n",
+			(unsigned long)s->valid, s->sum,
+			s->iops, s->speed,
+			(unsigned long)s->min, s->avg,
+			(unsigned long)s->max, s->mdev,
+			(unsigned long)s->count,
+			(unsigned long)s->load_time);
+}
+
 int main (int argc, char **argv)
 {
 	ssize_t ret_size;
 	struct stat st;
 	int ret;
 
-	long long request, part_request;
-	long long too_fast = 0, too_slow = 0;
-	long long total_valid, part_valid;
-	long long time_start, time_total, this_time;
-	double part_min, part_max, time_min, time_max;
-	double time_sum, time_sum2, time_mdev, time_avg;
-	double part_sum, part_sum2, part_mdev, part_avg;
-	long long time_now, time_next, part_start, period_deadline;
+	struct statistics part, total;
+
+	long long request, this_time;
+	long long time_now, time_next, period_deadline;
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
 
@@ -1248,30 +1326,22 @@ skip_preparation:
 	set_signal();
 
 	request = 0;
-	total_valid = 0;
 	woffset = 0;
 
-	part_request = 0;
-	part_valid = 0;
+	time_now = now();
 
-	part_min = time_min = LLONG_MAX;
-	part_max = time_max = LLONG_MIN;
-	part_sum = time_sum = 0;
-	part_sum2 = time_sum2 = 0;
-
-	time_start = now();
-	part_start = time_start;
+	start_statistics(&part, time_now);
+	start_statistics(&total, time_now);
 
 	if (deadline)
-		deadline += time_start;
+		deadline += time_now;
 
-	period_deadline = time_start + period_time;
+	period_deadline = time_now + period_time;
 
-	time_next = time_start;
+	time_next = time_now;
 
 	while (!exiting) {
 		request++;
-		part_request++;
 
 		if (randomize)
 			woffset = random64() % (wsize / size) * size;
@@ -1297,6 +1367,7 @@ skip_preparation:
 		this_time = now();
 
 		ret_size = make_request(fd, buf, size, offset + woffset);
+
 		if (ret_size < 0) {
 			if (errno != EINTR)
 				err(3, "request failed");
@@ -1315,18 +1386,9 @@ skip_preparation:
 
 		if (request == 1) {
 			/* warmup */
-		} else if (this_time < min_valid_time) {
-			too_fast++;
-		} else if (this_time > max_valid_time) {
-			too_slow++;
+			part.count++;
 		} else {
-			part_valid++;
-			part_sum += this_time;
-			part_sum2 += this_time * this_time;
-			if (this_time < part_min)
-				part_min = this_time;
-			if (this_time > part_max)
-				part_max = this_time;
+			add_statistics(&part, this_time);
 		}
 
 		if (!quiet) {
@@ -1343,9 +1405,9 @@ skip_preparation:
 				printf(" (too fast)");
 			} else if (this_time > max_valid_time) {
 				printf(" (too slow)");
-			} else if (part_valid > 5 && part_min < part_max) {
-				int percent = (this_time - part_min) * 100 /
-						(part_max - part_min);
+			} else if (part.valid > 5 && part.min < part.max) {
+				int percent = (this_time - part.min) * 100 /
+						(part.max - part.min);
 				if (percent < 5)
 					printf(" (fast)");
 				else if (percent > 95)
@@ -1354,48 +1416,13 @@ skip_preparation:
 			printf("\n");
 		}
 
-		if ((period_request && (part_request >= period_request)) ||
+		if ((period_request && (part.count >= period_request)) ||
 		    (period_time && (time_next >= period_deadline))) {
-
-			time_sum += part_sum;
-			time_sum2 += part_sum2;
-			if (part_min < time_min)
-				time_min = part_min;
-			if (part_max > time_max)
-				time_max = part_max;
-
-			if (part_valid) {
-				part_avg = part_sum / part_valid;
-				part_mdev = sqrt(part_sum2 / part_valid -
-						 part_avg * part_avg);
-			} else {
-				part_min = 0;
-				part_avg = 0;
-				part_max = 0;
-				part_mdev = 0;
-				part_sum = 0.1;
-			}
-
-			printf("%lu %.0f %.0f %.0f %.0f %.0f %.0f %.0f %lu %lu\n",
-					(unsigned long)part_valid, part_sum,
-					1. * NSEC_PER_SEC *
-						part_valid / part_sum,
-					1. * NSEC_PER_SEC *
-						part_valid * size / part_sum,
-					part_min, part_avg,
-					part_max, part_mdev,
-					(unsigned long)part_request,
-					(unsigned long)(time_now - part_start));
-
-			part_min = LLONG_MAX;
-			part_max = LLONG_MIN;
-			part_sum = part_sum2 = 0;
-			part_request = 0;
-			total_valid += part_valid;
-			part_valid = 0;
-
-			part_start = time_now;
-			period_deadline = part_start + period_time;
+			finish_statistics(&part, time_now);
+			dump_statistics(&part);
+			merge_statistics(&total, &part);
+			start_statistics(&part, time_now);
+			period_deadline = time_now + period_time;
 		}
 
 		if (!randomize) {
@@ -1423,87 +1450,63 @@ skip_preparation:
 	}
 
 	time_now = now();
-	time_total = time_now - time_start;
-	if (!time_total)
-		time_total = 1;
-
-	time_sum += part_sum;
-	time_sum2 += part_sum2;
-	if (part_min < time_min)
-		time_min = part_min;
-	if (part_max > time_max)
-		time_max = part_max;
-	total_valid += part_valid;
-
-	if (total_valid) {
-		time_avg = time_sum / total_valid;
-		time_mdev = sqrt(time_sum2 / total_valid - time_avg * time_avg);
-	} else {
-		time_min = 0;
-		time_avg = 0;
-		time_max = 0;
-		time_mdev = 0;
-		time_sum = 0.1;
-	}
+	finish_statistics(&part, time_now);
+	merge_statistics(&total, &part);
+	finish_statistics(&total, time_now);
 
 	if (batch_mode) {
-		printf("%lu %.0f %.0f %.0f %.0f %.0f %.0f %.0f %lu %lu\n",
-				(unsigned long)total_valid, time_sum,
-				1. * NSEC_PER_SEC *
-					total_valid / time_sum,
-				1. * NSEC_PER_SEC *
-					total_valid * size / time_sum,
-				time_min, time_avg,
-				time_max, time_mdev,
-				(unsigned long)request,
-				(unsigned long)time_total);
-	} else if (!quiet || (!period_time && !period_request)) {
-		printf("\n--- %s (%s %s", path, fstype, device);
-		if (device_size)
-			print_size(device_size);
-		printf(") ioping statistics ---\n");
-		print_int(total_valid);
-		printf(" requests completed in ");
-		print_time(time_sum);
-		printf(", ");
-		print_size((long long)total_valid * size);
-		printf(" %s, ", write_read_test ? "transferred" :
-				write_test ? "written" : "read");
-		print_int(1. * NSEC_PER_SEC * total_valid / time_sum);
-		printf(" iops, ");
-		print_size(1. * NSEC_PER_SEC * total_valid * size / time_sum);
-		printf("/s\n");
-
-		if (too_fast) {
-			print_int(too_fast);
-			printf(" too fast, ");
-		}
-		if (too_slow) {
-			print_int(too_slow);
-			printf(" too slow, ");
-		}
-		printf("total ");
-		print_int(request);
-		printf(" requests in ");
-		print_time(time_total);
-		printf(", ");
-		print_size((long long)request * size);
-		printf(", ");
-		print_int(1. * NSEC_PER_SEC * request / time_total);
-		printf(" iops, ");
-		print_size(1. * NSEC_PER_SEC * request * size / time_total);
-		printf("/s\n");
-
-		printf("min/avg/max/mdev = ");
-		print_time(time_min);
-		printf(" / ");
-		print_time(time_avg);
-		printf(" / ");
-		print_time(time_max);
-		printf(" / ");
-		print_time(time_mdev);
-		printf("\n");
+		dump_statistics(&total);
+		return 0;
 	}
+
+	if (quiet && (period_time || period_request))
+		return 0;
+
+	printf("\n--- %s (%s %s", path, fstype, device);
+	if (device_size)
+		print_size(device_size);
+	printf(") ioping statistics ---\n");
+	print_int(total.valid);
+	printf(" requests completed in ");
+	print_time(total.sum);
+	printf(", ");
+	print_size(total.size);
+	printf("%s, ", write_read_test ? "" :
+			write_test ? " written" : " read");
+	print_int(total.iops);
+	printf(" iops, ");
+	print_size(total.speed);
+	printf("/s\n");
+
+	if (total.too_fast) {
+		print_int(total.too_fast);
+		printf(" too fast, ");
+	}
+	if (total.too_slow) {
+		print_int(total.too_slow);
+		printf(" too slow, ");
+	}
+	printf("generated ");
+	print_int(total.count);
+	printf(" requests in ");
+	print_time(total.load_time);
+	printf(", ");
+	print_size(total.load_size);
+	printf(", ");
+	print_int(total.load_iops);
+	printf(" iops, ");
+	print_size(total.load_speed);
+	printf("/s\n");
+
+	printf("min/avg/max/mdev = ");
+	print_time(total.min);
+	printf(" / ");
+	print_time(total.avg);
+	printf(" / ");
+	print_time(total.max);
+	printf(" / ");
+	print_time(total.mdev);
+	printf("\n");
 
 	return 0;
 }
