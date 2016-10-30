@@ -401,9 +401,17 @@ long long parse_suffix(const char *str, struct suffix *sfx,
 		       long long min, long long max)
 {
 	char *end;
-	double val;
+	double val, den;
 
 	val = strtod(str, &end);
+	if (*end == '/') {
+		if (end == str)
+			val = 1;
+		den = strtod(end + 1, &end);
+		if (!den)
+			errx(1, "division by zero in parsing argument: %s", str);
+		val /= den;
+	}
 	for ( ; sfx->txt ; sfx++ ) {
 		if (strcasecmp(end, sfx->txt))
 			continue;
