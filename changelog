@@ -1,54 +1,278 @@
-since v0.4
- - rate-test, new key -R
- - FreeBSD port
- - OSX port
 
-since v0.5
- - fixes in man page and internal help
- - fixes in OSX and FreeBSD ports
- - Debian/kFreeBSD port
- - Debian/HURD port
+v1.0 / 2016-12-11
+=================
 
-since v0.6
- - Linux AIO support, new key -A
- - extended raw statistics, keys -p -P
- - batched mode, new key -B
- - write requests, key -W
- - automatic git-based versioning
- - Windows/MinGW port
- - DragonFlyBSD port
+  * ioping: update changelog
+  * ioping: cleanup statistics
+  * ioping: allow fractional values in arguments
+  * ioping: print total requests count in raw statistics
+  * ioping: ignore first and classify other requests
+  * ioping: add read-write mode
+  * ioping: add option for speed limit
+  * ioping: print total time, speed and count of requests
+  * ioping: add mkostemp
+  * ioping: add O_SYNC and O_DSYNC modes
+  * ioping: call fadvise(RANDOM) for random I/O
+  * ioping: remove fdatasync test before oprations
+  * Merge pull request #29 from vapier/master
+  * Makefile: do not strip while installing
+  * Makefile: make it easier to override default optimization settings
+  * Makefile: respect CPPFLAGS when compiling
+  * ignore generated files
+  * ioping: include sys/sysmacros.h for makedev
+  * ioping: use xorshift128+ for randomization
+  * Makefile: fix mac detection
+  * Makefile: no -lrt for mac
+  * ioping: no clock_gettime for mac
+  * travis-ci: enable osx
+  * ioping: link mingw without -lrt
+  * ioping: link with -lrt
+  * travis-ci: add .travis.yml
+  * Makefile: add test target
+  * ioping: switch to nanosecond precision
+  * Makefile: rename README to README.md
+  * Merge branch 'patch-1' of https://github.com/davidak/ioping
+  * README.md: update formatting
+  * Merge pull request #27 from jgrizou/master
+  * Rename README to README.md
+  * Update README
+  * add link to Nix expression
+  * ioping: update changelog
+  * ioping: use long long for count of requests
+  * ioping: add option -t for detecting cache hits
+  * ioping: use cached direct I/O by default if non-cached isn't supported
+  * ioping: add windows "overlapped" aio
+  * ioping: declare windows have direct I/O
+  * ioping: open files with CreateFile on windows
+  * ioping: get more randomness on windows
+  * ioping: do not override custom interval and deadline by -R
+  * Makefile: add top directory into binary archives
+  * ioping: keep VERSION right in ioping.c
+  * ioping: update help and manpage
+  * ioping: update README
+  * ioping: fix several integer overflows
+  * ioping: handle big requests on linux
+  * ioping: always respect explicitly set size
+  * ioping: print amount of data written/read
+  * ioping: print io run-time instead of real-time
+  * ioping: expand all symlinks in device path
 
-since v0.7
- - OpenBSD port
- - switch to IEEE 1541-2002 units: MiB/s
+v0.9 / 2014-10-06
+=================
 
-since v0.8
- - switch to line-buffered output for non-tty terminals, bug #17
- - Sun/Solaris port, bug #16
- - LICENSE (GPL-v3) included into distribution, bug #15
- - block-devices now optional, should helps future ports
- - support for O_TMPFILE at Linux
- - Key '-k' for keeping temporary file
- - print at least three decimal digits
- - support for pinging /dev/zero
- - randomize data to avoid compression in ssd
- - make strip target in makefile
+  * ioping.1: update manpage
+  * ioping: rename global count to stop_at_request
+  * ioping: fix final bps overflow
+  * ioping: update changelog and dates
+  * ioping: include LICENSE into tarball
+  * ioping: fix create_temp for windows
+  * ioping: fix O_TMPFILE
+  * Makefile: add strip target
+  * ioping: randomize data to avoid compression in ssd
+  * ioping: fix support of character devices
+  * ioping: print 'to' instead of 'from' for write requests
+  * ioping: fix mingw port compilation
+  * ioping: print at least three decimal digits
+  * ioping: add option for keeping/reusing working file
+  * ioping: add support for O_TMPFILE
+  * ioping: make block device support optional
+  * ioping: add copy of gpl-v3
+  * ioping: port to solaris os
+  * ioping: switch stdout into line-buffered mode
+  * ioping: fix warning messages
 
-since v0.9
- - resolve symlinks in /dev
- - print IO run time instead of real time
- - print amount of data written/read
- - respect explicitly set size, interval and deadline
- - warn about requests too big for linux
- - fix several integer overflows
- - migrate from code.google.com to github.com
- - manpage/help update
- - keep verion in source code
- - respect expicitly set interval and deadline
- - add top directory unto binary archives
- - fix randromization in windows port
- - use direct io for non-cached operations in windows port
- - add windows "overlapped" aio
- - use cached direct I/O as default fallback for non-cached non-direct
- - use long long for count of request
- - add option -t for detecting cache hits
+v0.8 / 2013-12-30
+=================
+
+  * ioping: add links to related tools and projects
+  * ioping: add hints for units into manpage
+  * iopint: unhardcode units for printing device size
+  * ioping: warn about unreliable results on poor platforms
+  * ioping: update dates and changelog
+  * ioping: use snprintf instead of sprintf
+  * ioping: use c99 macro from inttypes.h for printing 64-bit values
+  * ioping: move features macro into source code
+  * ioping: ignore undefined version
+  * ioping: pick fix_manpage_hyphen.patch from debian
+  * ioping: add link to homepage into README
+  * ioping: use IEEE 1541-2002 units for printing
+  * ioping: fix OpenBSD port
+  * ioping: OpenBSD port
+  * ioping: detect fdatasync availability
+
+v0.7 / 2013-02-02
+=================
+
+  * ioping: automatically choose best units for human-readable output
+  * ioping: update makefile
+  * ioping: rework binary packs
+  * ioping: add documentation
+  * ioping: put aio errors into errno
+  * ioping: ioping.pdf target
+  * ioping.1: use common groff macroses
+  * ioping: less weird period-deadline
+  * ioping: DragonFlyBSD port
+  * ioping: binary packs
+  * ioping: mingw windows port
+  * ioping: batch mode
+  * ioping: use nanosleep to sleep
+  * ioping: fix -c limit
+  * ioping: don't use long long format
+  * ioping: use gnu99 gcc standard
+  * ioping: rework version control
+  * ioping: fix typos
+  * ioping: write-test
+  * ioping: time period for statistics
+  * ioping: extended raw statistics
+  * ioping: fix 32-bit aio
+  * ioping: add linux aio support
+  * ioping: avoid zero usleep
+
+v0.6 / 2011-08-01
+=================
+
+  * release v0.6
+  * ioping: enable direct for freebsd
+  * ioping: fixup freebsd port
+  * ioping: fix misprint
+  * ioping.1: document tera suffixes
+  * ioping: fix help for -L option
+  * ioping.1: add authors
+  * ioping.1: add homepage
+  * ioping: Use consistent names for direct I/O and cached I/O
+  * ioping.1: Add -v to man page SYNOPSYS and help message
+  * ioping.1: fix description of -L option
+  * ioping: port to Debian GNU/Hurd
+  * ioping: port to Debian GNU/kFreeBSD
+  * ioping: untwist cached-direct modes
+  * ioping: fix 32-bit wsize overflow
+  * ioping: document defaults in man and help
+  * ioping: show target info in final statictics
+  * ioping: use git-describe to retrieve version
+  * ioping: fix help for -R
+  * ioping: move 64m temp working set size to rate test
+  * ioping: add builtin version and -v
+  * bsd,apl: concentrate magic on top
+  * ioping.1: describe sector-size suffix
+  * ioping.1: describe suffixes for -p and -c
+  * Fix a typo in a define
+  * displaying stats: add comma, obey 80 column width
+  * ioping, ioping.1: better description of -R
+  * ioping, ioping.1: -h is an exclusive option
+  * ioping.1: assorted improvements
+
+v0.5 / 2011-06-16
+=================
+
+  * release v0.5
+  * rate test, iops
+  * show block device size
+  * include sys/disk.h for freebsd
+  * don't use getopt() GNU extension
+  * use F_NOCACHE not only for macos
+  * inclide sys/uio.h at macos
+  * add parse_device() for freebsd and macos
+  * use macos fcntl F_NOCACHE
+  * more disk size ioctls
+  * enable direct and cached if there no posix_fadvise()
+  * add get_block_size()
+  * stubs for posix_memalign() and posix_fadvice()
+  * use posix_memalign() instead of memalign()
+  * show final statistics in quiet mode if period not specified
+  * show io speed
+
+v0.4 / 2011-06-02
+=================
+
+  * bump version
+  * workaround gcc bug, or this is a feature?
+  * ioping.spec: raise version to 0.3
+  * make dist: do not rebuild dist if non needed
+  * Fix i386 RPM build on an x86_64
+  * Since 'make dist' generates tar.gz this is what we should use.
+  * oops
+  * use stat() instead of lstat()
+  * ioping -h should exit with 0
+  * man: describe non-zero exit codes
+  * error codes: 0: success 1: argument error 2: preparation error 3: runtime error
+  * use errx for fcntl error messages
+  * fix segfault in parse_device()
+  * Added support for older kernels lacking /proc/self/mountinfo. Try to use info from /proc/self/mounts if there is no mountinfo.
+  * Fix misleading error message
+  * use full working set range by default
+  * Use random operations by defult, add -L option for sequential.
+  * fix interrupt
+  * fix tabs in spec
+  * Makefile: add 'dist' and similar targets
+  * Add spec file (RPM packaging)
+  * Add ioping(1) man page
+  * fixup
+  * This tries to address two issues:
+  * 'ioping -w' was going over the time limit specified. For example, 'ioping -w 7 -i 2' was taking 8 seconds to run, not 7 or less. Fix it by moving the check to before usleep(), and taking the interval (ie usleep argument) into account.
+  *  * ioping -c|-w: do not oversleep
+  * ioping: use system message for ENOMEM
+  * ioping: don't print 'unknown option' twice, show usage
+  * Makefile: add DESTDIR support Needed mostly for distro vendors (.spec writers etc.)
+  * ioping -h: fit output to 80 col width
+  * randomization, fixing usage
+  * working set size, cleanups, fixes, etc...
+  * initial
+  * Initial directory structure.
+
+v1.0 / 2016-12-11
+=================
+
+  * ioping: update changelog
+  * ioping: cleanup statistics
+  * ioping: allow fractional values in arguments
+  * ioping: print total requests count in raw statistics
+  * ioping: ignore first and classify other requests
+  * ioping: add read-write mode
+  * ioping: add option for speed limit
+  * ioping: print total time, speed and count of requests
+  * ioping: add mkostemp
+  * ioping: add O_SYNC and O_DSYNC modes
+  * ioping: call fadvise(RANDOM) for random I/O
+  * ioping: remove fdatasync test before oprations
+  * Merge pull request #29 from vapier/master
+  * Makefile: do not strip while installing
+  * Makefile: make it easier to override default optimization settings
+  * Makefile: respect CPPFLAGS when compiling
+  * ignore generated files
+  * ioping: include sys/sysmacros.h for makedev
+  * ioping: use xorshift128+ for randomization
+  * Makefile: fix mac detection
+  * Makefile: no -lrt for mac
+  * ioping: no clock_gettime for mac
+  * travis-ci: enable osx
+  * ioping: link mingw without -lrt
+  * ioping: link with -lrt
+  * travis-ci: add .travis.yml
+  * Makefile: add test target
+  * ioping: switch to nanosecond precision
+  * Makefile: rename README to README.md
+  * Merge branch 'patch-1' of https://github.com/davidak/ioping
+  * README.md: update formatting
+  * Merge pull request #27 from jgrizou/master
+  * Rename README to README.md
+  * Update README
+  * add link to Nix expression
+  * ioping: update changelog
+  * ioping: use long long for count of requests
+  * ioping: add option -t for detecting cache hits
+  * ioping: use cached direct I/O by default if non-cached isn't supported
+  * ioping: add windows "overlapped" aio
+  * ioping: declare windows have direct I/O
+  * ioping: open files with CreateFile on windows
+  * ioping: get more randomness on windows
+  * ioping: do not override custom interval and deadline by -R
+  * Makefile: add top directory into binary archives
+  * ioping: keep VERSION right in ioping.c
+  * ioping: update help and manpage
+  * ioping: update README
+  * ioping: fix several integer overflows
+  * ioping: handle big requests on linux
+  * ioping: always respect explicitly set size
+  * ioping: print amount of data written/read
+  * ioping: print io run-time instead of real-time
+  * ioping: expand all symlinks in device path
