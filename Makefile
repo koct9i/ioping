@@ -17,7 +17,8 @@ PACKAGE=ioping
 GIT_VER:=$(shell test -d .git && git describe --tags --match 'v[0-9]*' \
 		--abbrev=0 | sed 's/v//')
 SRC_VER:=$(shell sed -ne 's/\# define VERSION \"\(.*\)\"/\1/p' ioping.c)
-EXTRA_VERSION:=$(shell test -d .git && git describe --tags --dirty=+ | sed 's/^v[^-]*//;s/-/./g')
+EXTRA_VERSION:=$(shell test -d .git && git describe --tags --match 'v[0-9]*' \
+		--dirty=+ | sed 's/^v[^-]*//;s/-/./g')
 VERSION:=$(SRC_VER)$(EXTRA_VERSION)
 DISTDIR=$(PACKAGE)-$(VERSION)
 DISTFILES=$(SRCS) $(MANS) $(DOCS) $(SPEC) Makefile
