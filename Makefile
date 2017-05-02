@@ -87,4 +87,4 @@ binary-zip: $(PACKFILES)
 	zip ${PACKAGE}-${VERSION}-${TARGET}.zip $(addprefix $(DISTDIR)/,$^)
 	rm $(DISTDIR)
 
-.PHONY: all clean install dist version
+.PHONY: all version clean strip test install dist binary-tgz binary-zip
