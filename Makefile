@@ -19,6 +19,7 @@ VERSION:=$(shell sed -ne 's/\# define VERSION \"\(.*\)\"/\1/p' ioping.c)${EXTRA_
 DISTDIR=$(PACKAGE)-$(VERSION)
 DISTFILES=$(SRCS) $(MANS) $(DOCS) $(SPEC) Makefile
 PACKFILES=$(BINARY) $(MANS) $(MANS_F) $(DOCS)
+CPPFLAGS+=-DEXTRA_VERSION=\"${EXTRA_VERSION}\"
 
 STRIP=strip
 TARGET=$(shell ${CC} -dumpmachine)
@@ -59,7 +60,7 @@ install: $(BINARY) $(MANS)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DEXTRA_VERSION=\"${EXTRA_VERSION}\" -c -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 %.ps: %.1
 	man -t ./$< > $@
