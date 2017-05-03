@@ -14,11 +14,16 @@ DOCS=README.md LICENSE changelog
 SPEC=ioping.spec
 
 PACKAGE=ioping
-EXTRA_VERSION:=$(shell test -d .git && git describe --tags --dirty=+ | sed 's/^v[^-]*//;s/-/./g')
-VERSION:=$(shell sed -ne 's/\# define VERSION \"\(.*\)\"/\1/p' ioping.c)${EXTRA_VERSION}
+GIT_VER:=$(shell test -d .git && git describe --tags --match 'v[0-9]*' \
+		--abbrev=0 | sed 's/v//')
+SRC_VER:=$(shell sed -ne 's/\# define VERSION \"\(.*\)\"/\1/p' ioping.c)
+EXTRA_VERSION:=$(shell test -d .git && git describe --tags --match 'v[0-9]*' \
+		--dirty=+ | sed 's/^v[^-]*//;s/-/./g')
+VERSION:=$(SRC_VER)$(EXTRA_VERSION)
 DISTDIR=$(PACKAGE)-$(VERSION)
 DISTFILES=$(SRCS) $(MANS) $(DOCS) $(SPEC) Makefile
 PACKFILES=$(BINARY) $(MANS) $(MANS_F) $(DOCS)
+CPPFLAGS+=-DEXTRA_VERSION=\"${EXTRA_VERSION}\"
 
 STRIP=strip
 TARGET=$(shell ${CC} -dumpmachine)
@@ -35,10 +40,17 @@ BINARY:=$(BINARY:=.exe)
 LIBS=-lm
 endif
 
-all: $(BINARY)
+all: checkver $(BINARY)
 
-version:
+version: checkver
 	@echo ${VERSION}
+
+checkver:
+	@if test -n "$(GIT_VER)" -a "$(GIT_VER)" != "$(SRC_VER)"; then \
+		echo "ERROR: Version mismatch between git and source"; \
+		echo git: $(GIT_VER), src: $(SRC_VER); \
+		exit 1; \
+	fi
 
 clean:
 	$(RM) -f $(OBJS) $(BINARY) $(MANS_F) ioping.tmp
@@ -59,7 +71,7 @@ install: $(BINARY) $(MANS)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DEXTRA_VERSION=\"${EXTRA_VERSION}\" -c -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 %.ps: %.1
 	man -t ./$< > $@
@@ -73,17 +85,17 @@ install: $(BINARY) $(MANS)
 $(BINARY): $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(LIBS)
 
-dist: $(DISTFILES)
+dist: checkver $(DISTFILES)
 	tar -cz --transform='s,^,$(DISTDIR)/,S' $^ -f $(DISTDIR).tar.gz
 
-binary-tgz: $(PACKFILES)
+binary-tgz: checkver $(PACKFILES)
 	${STRIP} ${BINARY}
 	tar -cz --transform='s,^,$(DISTDIR)/,S' -f ${PACKAGE}-${VERSION}-${TARGET}.tgz $^
 
-binary-zip: $(PACKFILES)
+binary-zip: checkver $(PACKFILES)
 	${STRIP} ${BINARY}
 	ln -s . $(DISTDIR)
 	zip ${PACKAGE}-${VERSION}-${TARGET}.zip $(addprefix $(DISTDIR)/,$^)
 	rm $(DISTDIR)
 
-.PHONY: all clean install dist version
+.PHONY: all version checkver clean strip test install dist binary-tgz binary-zip

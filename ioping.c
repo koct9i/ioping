@@ -19,7 +19,7 @@
  */
 
 #ifndef VERSION
-# define VERSION "0.9"
+# define VERSION "1.0"
 #endif
 
 #ifndef EXTRA_VERSION
