@@ -105,7 +105,7 @@
 # define HAVE_ERR_INCLUDE
 #endif
 
-#ifdef __sun__	/* Solaris */
+#ifdef __sun	/* Solaris */
 # include <sys/dkio.h>
 # include <sys/vtoc.h>
 # define HAVE_CLOCK_GETTIME
@@ -736,7 +736,7 @@ int get_device_size(int fd, struct stat *st)
 	part = label.d_partitions[DISKPART(st->st_rdev)];
 
 	blksize = DL_GETPSIZE(&part) * label.d_secsize;
-#elif defined(__sun__)
+#elif defined(__sun)
 	struct dk_minfo dkmp;
 
 	ret = ioctl(fd, DKIOCGMEDIAINFO, &dkmp);
