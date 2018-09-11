@@ -1,4 +1,22 @@
 
+v1.1 / 2018-09-11
+==================
+
+  * ioping: release 1.1
+  * ioping.1: raw statisitics in nanoseconds
+  * Merge pull request #37 from standby24x7/fix-man
+  * Fix a typo in ioping.1
+  * Merge pull request #36 from lewellyn/solaris
+  * Correct Solaris predefined macro
+  * ioping.1: add more references
+  * Merge pull request #32 from kolyshkin/makefile
+  * Makefile: only use vN tags for EXTRA_VERSION
+  * ioping.c: set VERSION to 1.0
+  * Makefile: make sure git tag == src ver
+  * Makefile: make all phony targets as such
+  * Makefile: move -D to CPPFLAGS
+  * ioping(1): fix aio description
+
 v1.0 / 2016-12-11
 =================
 
