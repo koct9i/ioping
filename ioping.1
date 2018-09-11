@@ -117,6 +117,9 @@ For options that expect time argument (\fB\-i\fR, \fB\-P\fR and \fB\-w\fR),
 default is seconds, unless you specify one of the following suffixes
 (case-insensitive):
 .TP
+.BR ns ,\  nsec
+nanoseconds (a billionth of a second, 1 / 1 000 000 000)
+.TP
 .BR us ,\  usec
 microseconds (a millionth of a second, 1 / 1 000 000)
 .TP
@@ -183,33 +186,33 @@ Error during runtime.
 .B ioping -p 100 -c 200 -i 0 -q .
 .ad l
 .br
-\f(CW100 26694 3746 15344272 188 267 1923 228 100 26694
+\f(CW99 10970974 9024 36961531 90437 110818 358872 30756 100 12516420
 .br
-100 24165 4138 16950134 190 242 2348 214 100 24165
+100 9573265 10446 42785821 86849 95733 154609 10548 100 10649035
 .br
-(1) (2)   (3)  (4)      (5) (6) (7)  (8) (9) (10)
+(1) (2)     (3)   (4)      (5)   (6)   (7)    (8)   (9) (10)
 .br
 
 .br
 (1) count of requests in statistics
 .br
-(2) running time         (usec)
+(2) running time         (nanoseconds)
 .br
 (3) requests per second  (iops)
 .br
-(4) transfer speed       (bytes/sec)
+(4) transfer speed       (bytes per second)
 .br
-(5) minimal request time (usec)
+(5) minimal request time (nanoseconds)
 .br
-(6) average request time (usec)
+(6) average request time (nanoseconds)
 .br
-(7) maximum request time (usec)
+(7) maximum request time (nanoseconds)
 .br
-(8) request time standard deviation (usec)
+(8) request time standard deviation (nanoseconds)
 .br
-(9) total requests       (including too slow and too fast)
+(9) total requests       (including warmup, too slow or too fast)
 .br
-(10) total running time  (usec)
+(10) total running time  (nanoseconds)
 .SH EXAMPLES
 .TP
 .B ioping .
