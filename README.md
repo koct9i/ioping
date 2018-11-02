@@ -1,7 +1,7 @@
 ioping
 ======
 
-An tool to monitor I/O latency in real time.
+A tool to monitor I/O latency in real time.
 It shows disk latency in the same way as ping shows network latency.
 
 Homepage: https://github.com/koct9i/ioping/
