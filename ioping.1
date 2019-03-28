@@ -3,7 +3,7 @@
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
-.OP \-ABCDLRWGYykq
+.OP \-ABCDLRWGYykqN
 .OP \-c count
 .OP \-i interval
 .OP \-l speed
@@ -106,6 +106,9 @@ Keep and reuse temporary working file "ioping.tmp" (only for directory target).
 .TP
 .B \-q
 Suppress periodical human-readable output.
+.TP
+.B \-N
+Use output format compatible with netdata.
 .TP
 .B \-h
 Display help message and exit.
