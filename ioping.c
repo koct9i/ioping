@@ -45,6 +45,8 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 
+#define HAVE_GETOPT_LONG_ONLY
+
 #ifdef __linux__
 # include <sys/ioctl.h>
 # include <sys/mount.h>
@@ -315,31 +317,31 @@ void usage(void)
 			"               [-o offset] [-w deadline] [-pP period] directory|file|device\n"
 			"        ioping -h | -v\n"
 			"\n"
-			"      -c <count>      stop after <count> requests\n"
-			"      -i <interval>   interval between requests (1s)\n"
-			"      -l <speed>      speed limit in bytes per second\n"
-			"      -t <time>       minimal valid request time (0us)\n"
-			"      -T <time>       maximum valid request time\n"
-			"      -s <size>       request size (4k)\n"
-			"      -S <wsize>      working set size (1m)\n"
-			"      -o <offset>     working set offset (0)\n"
-			"      -w <deadline>   stop after <deadline> time passed\n"
-			"      -p <period>     print raw statistics for every <period> requests\n"
-			"      -P <period>     print raw statistics for every <period> in time\n"
-			"      -A              use asynchronous I/O\n"
-			"      -C              use cached I/O (no cache flush/drop)\n"
-			"      -B              print final statistics in raw format\n"
-			"      -D              use direct I/O (O_DIRECT)\n"
-			"      -R              seek rate test\n"
-			"      -L              use sequential operations\n"
-			"      -W              use write I/O (please read manpage)\n"
-			"      -G              read-write ping-pong mode\n"
-			"      -Y              use sync I/O (O_SYNC)\n"
-			"      -y              use data sync I/O (O_DSYNC)\n"
-			"      -k              keep and reuse temporary file (ioping.tmp)\n"
-			"      -q              suppress human-readable output\n"
-			"      -h              display this message and exit\n"
-			"      -v              display version and exit\n"
+			"      -c, -count <count>         stop after <count> requests\n"
+			"      -i, -interval <time>       interval between requests (1s)\n"
+			"      -w, -work-time <time>      stop after <time> passed\n"
+			"      -l, -speed-limit <size>    limit speed with <size> per second\n"
+			"      -t, -min-time <time>       minimal valid request time (0us)\n"
+			"      -T, -max-time <time>       maximum valid request time\n"
+			"      -s, -size <size>           request size (4k)\n"
+			"      -S, -work-size <size>      working set size (1m)\n"
+			"      -o, -work-offset <size>    working set offset (0)\n"
+			"      -p, -print-count <count>   print raw statistics for every <count> requests\n"
+			"      -P, -print-interval <time> print raw statistics for every <time>\n"
+			"      -A, -async                 use asynchronous I/O\n"
+			"      -C, -cached                use cached I/O (no cache flush/drop)\n"
+			"      -B, -batch                 print final statistics in raw format\n"
+			"      -D, -direct                use direct I/O (O_DIRECT)\n"
+			"      -R, -rapid                 test with rapid I/O during 3s\n"
+			"      -L, -linear                use sequential operations\n"
+			"      -W, -write                 use write I/O (please read manpage)\n"
+			"      -G, -read-write            read-write ping-pong mode\n"
+			"      -Y, -sync                  use sync I/O (O_SYNC)\n"
+			"      -y, -dsync                 use data sync I/O (O_DSYNC)\n"
+			"      -k, -keep                  keep and reuse temporary file (ioping.tmp)\n"
+			"      -q, -quiet                 suppress human-readable output\n"
+			"      -h, -help                  display this message and exit\n"
+			"      -v, -version               display version and exit\n"
 			"\n"
 	       );
 }
@@ -533,6 +535,50 @@ long long stop_at_request = 0;
 
 int exiting = 0;
 
+const char *options = "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:";
+
+#ifdef HAVE_GETOPT_LONG_ONLY
+
+static struct option long_options[] = {
+	{"help",	no_argument,		NULL,	'h'},
+	{"version",	no_argument,		NULL,	'v'},
+
+	{"keep",	no_argument,		NULL,	'k'},
+
+	{"quiet",	no_argument,		NULL,	'q'},
+	{"batch",	no_argument,		NULL,	'B'},
+
+	{"rapid",	no_argument,		NULL,	'R'},
+	{"linear",	no_argument,		NULL,	'L'},
+	{"direct",	no_argument,		NULL,	'D'},
+	{"cached",	no_argument,		NULL,	'C'},
+	{"sync",	no_argument,		NULL,	'Y'},
+	{"dsync",	no_argument,		NULL,	'y'},
+	{"async",	no_argument,		NULL,	'A'},
+	{"write",	no_argument,		NULL,	'W'},
+	{"read-write",	no_argument,		NULL,	'G'},
+
+	{"size",	required_argument,	NULL,	's'},
+	{"work-size",	required_argument,	NULL,	'S'},
+	{"work-offset",	required_argument,	NULL,	'o'},
+
+	{"count",	required_argument,	NULL,	'c'},
+	{"work-time",	required_argument,	NULL,	'w'},
+
+	{"interval",	required_argument,	NULL,	'i'},
+	{"speed-limit",	required_argument,	NULL,	'l'},
+
+	{"min-time",	required_argument,	NULL,	't'},
+	{"max-time",	required_argument,	NULL,	'T'},
+
+	{"print-count", required_argument,	NULL,	'p'},
+	{"print-interval", required_argument,	NULL,	'P'},
+
+	{0,		0,			NULL,	0},
+};
+
+#endif /* HAVE_GETOPT_LONG */
+
 void parse_options(int argc, char **argv)
 {
 	int opt;
@@ -542,7 +588,14 @@ void parse_options(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:")) != -1) {
+	while ((opt =
+#ifdef HAVE_GETOPT_LONG_ONLY
+		getopt_long_only(argc, argv, options, long_options, NULL)
+#else
+		getopt(argc, argv, options)
+#endif
+	) != -1) {
+
 		switch (opt) {
 			case 'h':
 				usage();
