@@ -317,6 +317,7 @@ void usage(void)
 			"               [-o offset] [-w deadline] [-pP period] directory|file|device\n"
 			"        ioping -h | -v\n"
 			"\n"
+			"      -a, -warmup <count>        ignore <count> first requests (1)\n"
 			"      -c, -count <count>         stop after <count> requests\n"
 			"      -i, -interval <time>       interval between requests (1s)\n"
 			"      -w, -work-time <time>      stop after <time> passed\n"
@@ -531,11 +532,13 @@ int keep_file = 0;
 off_t offset = 0;
 off_t woffset = 0;
 
+long long request = 0;
+long long warmup_request = 1;
 long long stop_at_request = 0;
 
 int exiting = 0;
 
-const char *options = "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:";
+const char *options = "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:a:";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -568,6 +571,7 @@ static struct option long_options[] = {
 	{"interval",	required_argument,	NULL,	'i'},
 	{"speed-limit",	required_argument,	NULL,	'l'},
 
+	{"warmup",	required_argument,	NULL,	'a'},
 	{"min-time",	required_argument,	NULL,	't'},
 	{"max-time",	required_argument,	NULL,	'T'},
 
@@ -678,6 +682,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'c':
 				stop_at_request = parse_int(optarg);
+				break;
+			case 'a':
+				warmup_request = parse_int(optarg);
 				break;
 			case 'k':
 				keep_file = 1;
@@ -1152,7 +1159,9 @@ static void start_statistics(struct statistics *s, unsigned long long start) {
 
 static void add_statistics(struct statistics *s, long long val) {
 	s->count++;
-	if (val < min_valid_time) {
+	if (request <= warmup_request) {
+		/* warmup */
+	} else if (val < min_valid_time) {
 		s->too_fast++;
 	} else if (val > max_valid_time) {
 		s->too_slow++;
@@ -1224,7 +1233,7 @@ int main (int argc, char **argv)
 
 	struct statistics part, total;
 
-	long long request, this_time;
+	long long this_time;
 	long long time_now, time_next, period_deadline;
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
@@ -1398,7 +1407,6 @@ skip_preparation:
 
 	set_signal();
 
-	request = 0;
 	woffset = 0;
 
 	time_now = now();
@@ -1457,12 +1465,7 @@ skip_preparation:
 
 		this_time = time_now - this_time;
 
-		if (request == 1) {
-			/* warmup */
-			part.count++;
-		} else {
-			add_statistics(&part, this_time);
-		}
+		add_statistics(&part, this_time);
 
 		if (!quiet) {
 			print_size(ret_size);
@@ -1471,7 +1474,7 @@ skip_preparation:
 			print_size(device_size);
 			printf("): request=%lu time=", (long unsigned)request);
 			print_time(this_time);
-			if (request == 1) {
+			if (request <= warmup_request) {
 				printf(" (warmup)");
 			} else if (this_time < min_valid_time) {
 				printf(" (too fast)");
@@ -1488,7 +1491,7 @@ skip_preparation:
 			printf("\n");
 		}
 
-		if ((period_request && (part.count >= period_request)) ||
+		if ((period_request && (part.valid >= period_request)) ||
 		    (period_time && (time_next >= period_deadline))) {
 			finish_statistics(&part, time_now);
 			dump_statistics(&part);

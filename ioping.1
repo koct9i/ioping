@@ -4,6 +4,7 @@ ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
 .OP \-ABCDLRWGYykq
+.OP \-a count
 .OP \-c count
 .OP \-i interval
 .OP \-l speed
@@ -26,6 +27,9 @@ ioping \- simple disk I/O latency monitoring tool
 This tool generates various I/O patterns and lets you monitor I/O speed and
 latency in real time.
 .SH OPTIONS
+.TP
+\fB\-a\fR, \fB\-warmup\fR \fIcount\fR
+Ignore in statistics first \fIcount\fR requests, default 1.
 .TP
 \fB\-c\fR, \fB\-count\fR \fIcount\fR
 Stop after \fIcount\fR requests, default \fB0\fR (infinite).
