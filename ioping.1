@@ -3,7 +3,7 @@
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
-.OP \-ABCDLRWGYykq
+.OP \-ABCDJLRWGYykq
 .OP \-a count
 .OP \-c count
 .OP \-i interval
@@ -78,6 +78,9 @@ read and \fBfdatasync\fR(2) after each write.
 .TP
 \fB\-D\fR, \fB\-direct\fR
 Use direct I/O (see \fBO_DIRECT\fR in \fBopen\fR(2)).
+.TP
+\fB\-J\fR, \fB\-json\fR
+Print output in JSON format.
 .TP
 \fB\-L\fR, \fB\-linear\fR
 Use sequential operations rather than random. This also sets default request

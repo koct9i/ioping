@@ -180,6 +180,7 @@ void warnx(const char *fmt, ...)
 #endif /* HAVE_ERR_INCLUDE */
 
 #define NSEC_PER_SEC	1000000000ll
+#define USEC_PER_SEC	1000000L
 
 #ifdef HAVE_CLOCK_GETTIME
 
@@ -193,6 +194,16 @@ static inline long long now(void)
 	return ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
 }
 
+static inline double timestamp(void)
+{
+	struct timespec ts;
+
+	if (clock_gettime(CLOCK_REALTIME, &ts))
+		err(3, "clock_gettime failed");
+
+	return ts.tv_sec + (double)ts.tv_nsec / NSEC_PER_SEC;
+}
+
 #else
 
 static inline long long now(void)
@@ -203,6 +214,16 @@ static inline long long now(void)
 		err(3, "gettimeofday failed");
 
 	return tv.tv_sec * NSEC_PER_SEC + tv.tv_usec * 1000ll;
+}
+
+static inline double timestamp(void)
+{
+	struct timeval tv;
+
+	if (gettimeofday(&tv, NULL))
+		err(3, "gettimeofday failed");
+
+	return tv.tv_sec + (double)tv.tv_usec / USEC_PER_SEC;
 }
 
 #endif /* HAVE_CLOCK_GETTIME */
@@ -536,9 +557,12 @@ long long request = 0;
 long long warmup_request = 1;
 long long stop_at_request = 0;
 
+int json = 0;
+int json_line = 0;
+
 int exiting = 0;
 
-const char *options = "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:a:";
+const char *options = "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:a:J";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -550,6 +574,7 @@ static struct option long_options[] = {
 
 	{"quiet",	no_argument,		NULL,	'q'},
 	{"batch",	no_argument,		NULL,	'B'},
+	{"json",	no_argument,		NULL,	'J'},
 
 	{"rapid",	no_argument,		NULL,	'R'},
 	{"linear",	no_argument,		NULL,	'L'},
@@ -679,6 +704,9 @@ void parse_options(int argc, char **argv)
 			case 'B':
 				quiet = 1;
 				batch_mode = 1;
+				break;
+			case 'J':
+				json = 1;
 				break;
 			case 'c':
 				stop_at_request = parse_int(optarg);
@@ -1157,7 +1185,7 @@ static void start_statistics(struct statistics *s, unsigned long long start) {
 	s->start = start;
 }
 
-static void add_statistics(struct statistics *s, long long val) {
+static int add_statistics(struct statistics *s, long long val) {
 	s->count++;
 	if (request <= warmup_request) {
 		/* warmup */
@@ -1173,7 +1201,10 @@ static void add_statistics(struct statistics *s, long long val) {
 			s->min = val;
 		if (val > s->max)
 			s->max = val;
+		return 1;
 	}
+
+	return 0;
 }
 
 static void merge_statistics(struct statistics *s, struct statistics *o) {
@@ -1225,10 +1256,95 @@ static void dump_statistics(struct statistics *s) {
 			(unsigned long)s->load_time);
 }
 
+static void json_request(size_t io_size, long long io_time, int valid)
+{
+	printf("%s{\n"
+	       "  \"timestamp\": %f,\n"
+	       "  \"target\": {\n"
+	       "    \"path\": \"%s\",\n"
+	       "    \"fstype\": \"%s\",\n"
+	       "    \"device\": \"%s\",\n"
+	       "    \"device_size\": %ld\n"
+	       "  },\n"
+	       "  \"io\": {\n"
+	       "    \"request\": %ld,\n"
+	       "    \"operation\": \"%s\",\n"
+	       "    \"size\": %ld,\n"
+	       "    \"time\": %lu,\n"
+	       "    \"ignored\": %s\n"
+	       "  }\n"
+	       "}",
+	       json_line++ ? "," : "",
+	       timestamp(),
+	       path,
+	       fstype,
+	       device,
+	       (long)device_size,
+	       (long)request,
+	       write_test ? "write" : "read",
+	       (unsigned long)io_size,
+	       (unsigned long)io_time,
+	       valid ? "false" : "true");
+	fflush(stdout);
+}
+
+static void json_statistics(struct statistics *s)
+{
+	printf("%s{\n"
+	       "  \"timestamp\": %f,\n"
+	       "  \"target\": {\n"
+	       "    \"path\": \"%s\",\n"
+	       "    \"fstype\": \"%s\",\n"
+	       "    \"device\": \"%s\",\n"
+	       "    \"device_size\": %ld\n"
+	       "  },\n"
+	       "  \"stat\": {\n"
+	       "    \"count\": %lu,\n"
+	       "    \"size\": %lu,\n"
+	       "    \"time\": %.0f,\n"
+	       "    \"iops\": %f,\n"
+	       "    \"bps\": %.0f,\n"
+	       "    \"min\": %lu,\n"
+	       "    \"avg\": %.0f,\n"
+	       "    \"max\": %lu,\n"
+	       "    \"mdev\": %.0f\n"
+	       "  },\n"
+	       "  \"load\": {\n"
+	       "    \"count\": %lu,\n"
+	       "    \"size\": %lu,\n"
+	       "    \"time\": %lu,\n"
+	       "    \"iops\": %f,\n"
+	       "    \"bps\": %.0f\n"
+	       "  }\n"
+	       "}",
+	       json_line++ ? "," : "",
+	       timestamp(),
+	       path,
+	       fstype,
+	       device,
+	       (long)device_size,
+	       (unsigned long)s->valid,
+	       (unsigned long)s->size,
+	       s->sum,
+	       s->iops,
+	       s->speed,
+	       (unsigned long)s->min,
+	       s->avg,
+	       (unsigned long)s->max,
+	       s->mdev,
+	       (unsigned long)s->count,
+	       (unsigned long)s->load_size,
+	       (unsigned long)s->load_time,
+	       s->load_iops,
+	       s->load_speed);
+	fflush(stdout);
+}
+
 int main (int argc, char **argv)
 {
 	ssize_t ret_size;
 	struct stat st;
+	int valid;
 	int ret;
 
 	struct statistics part, total;
@@ -1236,9 +1352,10 @@ int main (int argc, char **argv)
 	long long this_time;
 	long long time_now, time_next, period_deadline;
 
-	setvbuf(stdout, NULL, _IOLBF, 0);
-
 	parse_options(argc, argv);
+
+	if (!json)
+		setvbuf(stdout, NULL, _IOLBF, 0);
 
 	if (!size)
 		size = default_size;
@@ -1414,6 +1531,9 @@ skip_preparation:
 	start_statistics(&part, time_now);
 	start_statistics(&total, time_now);
 
+	if (json)
+		printf("[");
+
 	if (deadline)
 		deadline += time_now;
 
@@ -1465,9 +1585,13 @@ skip_preparation:
 
 		this_time = time_now - this_time;
 
-		add_statistics(&part, this_time);
+		valid = add_statistics(&part, this_time);
 
-		if (!quiet) {
+		if (quiet) {
+			/* silence */
+		} else if (json) {
+			json_request(ret_size, this_time, valid);
+		} else {
 			print_size(ret_size);
 			printf(" %s %s (%s %s ", write_test ? ">>>" : "<<<",
 					path, fstype, device);
@@ -1494,7 +1618,10 @@ skip_preparation:
 		if ((period_request && (part.valid >= period_request)) ||
 		    (period_time && (time_next >= period_deadline))) {
 			finish_statistics(&part, time_now);
-			dump_statistics(&part);
+			if (json)
+				json_statistics(&part);
+			else
+				dump_statistics(&part);
 			merge_statistics(&total, &part);
 			start_statistics(&part, time_now);
 			period_deadline = time_now + period_time;
@@ -1528,6 +1655,12 @@ skip_preparation:
 	finish_statistics(&part, time_now);
 	merge_statistics(&total, &part);
 	finish_statistics(&total, time_now);
+
+	if (json) {
+		json_statistics(&total);
+		printf("]\n");
+		return 0;
+	}
 
 	if (batch_mode) {
 		dump_statistics(&total);
