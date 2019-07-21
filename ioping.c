@@ -56,6 +56,7 @@
 # define HAVE_DIRECT_IO
 # define HAVE_LINUX_ASYNC_IO
 # define HAVE_ERR_INCLUDE
+# define HAVE_STATVFS
 # define MAX_RW_COUNT		0x7ffff000 /* 2G - 4K */
 #endif
 
@@ -65,6 +66,7 @@
 # define HAVE_POSIX_MEMALIGN
 # define HAVE_MKOSTEMP
 # define HAVE_ERR_INCLUDE
+# define HAVE_STATVFS
 #endif
 
 #if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
@@ -75,6 +77,7 @@
 # define HAVE_MKOSTEMP
 # define HAVE_DIRECT_IO
 # define HAVE_ERR_INCLUDE
+# define HAVE_STATVFS
 #endif
 
 #ifdef __DragonFly__
@@ -82,6 +85,7 @@
 # define HAVE_CLOCK_GETTIME
 # define HAVE_MKOSTEMP
 # define HAVE_ERR_INCLUDE
+# define HAVE_STATVFS
 #endif
 
 #ifdef __OpenBSD__
@@ -94,6 +98,7 @@
 # define HAVE_POSIX_MEMALIGN
 # define HAVE_MKOSTEMP
 # define HAVE_ERR_INCLUDE
+# define HAVE_STATVFS
 #endif
 
 #ifdef __APPLE__ /* OS X */
@@ -103,6 +108,7 @@
 # include <sys/uio.h>
 # define HAVE_NOCACHE_IO
 # define HAVE_ERR_INCLUDE
+# define HAVE_STATVFS
 #endif
 
 #ifdef __sun	/* Solaris */
@@ -112,6 +118,7 @@
 # define HAVE_DIRECT_IO
 # define O_DIRECT	O_DSYNC
 # define HAVE_ERR_INCLUDE
+# define HAVE_STATVFS
 #endif
 
 #ifdef __MINGW32__ /* Windows */
@@ -124,6 +131,10 @@
 
 #if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
 # define HAVE_POSIX_FDATASYNC
+#endif
+
+#ifdef HAVE_STATVFS
+# include <sys/statvfs.h>
 #endif
 
 #ifdef HAVE_ERR_INCLUDE
@@ -481,7 +492,7 @@ void print_time(long long val)
 char *path = NULL;
 char *fstype = "";
 char *device = "";
-off_t device_size = 0;
+long long device_size = 0;
 
 int fd;
 void *buf;
@@ -1249,7 +1260,7 @@ int main (int argc, char **argv)
 		} else {
 			device_size = st.st_size;
 			fstype = "block";
-			device = "device ";
+			device = "device";
 		}
 	} else {
 		errx(2, "unsupported destination: \"%s\"", path);
@@ -1303,6 +1314,15 @@ skip_preparation:
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
 	}
+
+#ifdef HAVE_STATVFS
+	if (S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)) {
+		struct statvfs vfs;
+
+		if (!fstatvfs(fd, &vfs))
+			device_size = (long long)vfs.f_frsize * vfs.f_blocks;
+	}
+#endif
 
 	/* No readahead for non-cached I/O, we'll invalidate it anyway */
 	if (randomize || !cached) {
@@ -1393,10 +1413,9 @@ skip_preparation:
 
 		if (!quiet) {
 			print_size(ret_size);
-			printf(" %s %s (%s %s", write_test ? ">>>" : "<<<",
+			printf(" %s %s (%s %s ", write_test ? ">>>" : "<<<",
 					path, fstype, device);
-			if (device_size)
-				print_size(device_size);
+			print_size(device_size);
 			printf("): request=%lu time=", (long unsigned)request);
 			print_time(this_time);
 			if (request == 1) {
@@ -1462,9 +1481,8 @@ skip_preparation:
 	if (quiet && (period_time || period_request))
 		return 0;
 
-	printf("\n--- %s (%s %s", path, fstype, device);
-	if (device_size)
-		print_size(device_size);
+	printf("\n--- %s (%s %s ", path, fstype, device);
+	print_size(device_size);
 	printf(") ioping statistics ---\n");
 	print_int(total.valid);
 	printf(" requests completed in ");
