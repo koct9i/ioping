@@ -117,8 +117,7 @@
 # include <sys/dkio.h>
 # include <sys/vtoc.h>
 # define HAVE_CLOCK_GETTIME
-# define HAVE_DIRECT_IO
-# define O_DIRECT	O_DSYNC
+# define HAVE_POSIX_FADVICE
 # define HAVE_ERR_INCLUDE
 # define HAVE_STATVFS
 #endif
