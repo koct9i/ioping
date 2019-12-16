@@ -330,43 +330,6 @@ int fdatasync(int fd)
 }
 #endif
 
-void usage(void)
-{
-	fprintf(stderr,
-			" Usage: ioping [-ABCDRLWYykq] [-c count] [-i interval] [-s size] [-S wsize]\n"
-			"               [-o offset] [-w deadline] [-pP period] directory|file|device\n"
-			"        ioping -h | -v\n"
-			"\n"
-			"      -a, -warmup <count>        ignore <count> first requests (1)\n"
-			"      -c, -count <count>         stop after <count> requests\n"
-			"      -i, -interval <time>       interval between requests (1s)\n"
-			"      -w, -work-time <time>      stop after <time> passed\n"
-			"      -l, -speed-limit <size>    limit speed with <size> per second\n"
-			"      -t, -min-time <time>       minimal valid request time (0us)\n"
-			"      -T, -max-time <time>       maximum valid request time\n"
-			"      -s, -size <size>           request size (4k)\n"
-			"      -S, -work-size <size>      working set size (1m)\n"
-			"      -o, -work-offset <size>    working set offset (0)\n"
-			"      -p, -print-count <count>   print raw statistics for every <count> requests\n"
-			"      -P, -print-interval <time> print raw statistics for every <time>\n"
-			"      -A, -async                 use asynchronous I/O\n"
-			"      -C, -cached                use cached I/O (no cache flush/drop)\n"
-			"      -B, -batch                 print final statistics in raw format\n"
-			"      -D, -direct                use direct I/O (O_DIRECT)\n"
-			"      -R, -rapid                 test with rapid I/O during 3s\n"
-			"      -L, -linear                use sequential operations\n"
-			"      -W, -write                 use write I/O (please read manpage)\n"
-			"      -G, -read-write            read-write ping-pong mode\n"
-			"      -Y, -sync                  use sync I/O (O_SYNC)\n"
-			"      -y, -dsync                 use data sync I/O (O_DSYNC)\n"
-			"      -k, -keep                  keep and reuse temporary file (ioping.tmp)\n"
-			"      -q, -quiet                 suppress human-readable output\n"
-			"      -h, -help                  display this message and exit\n"
-			"      -v, -version               display version and exit\n"
-			"\n"
-	       );
-}
-
 void version(void)
 {
 	fprintf(stderr, "ioping %s\n", VERSION EXTRA_VERSION);
@@ -606,6 +569,49 @@ static struct option long_options[] = {
 };
 
 #endif /* HAVE_GETOPT_LONG */
+
+void usage(void)
+{
+	fprintf(stderr,
+			" Usage: ioping [-ABCDRLWYykq] [-c count] [-i interval] [-s size] [-S wsize]\n"
+			"               [-o offset] [-w deadline] [-pP period] directory|file|device\n"
+			"        ioping -h | -v\n"
+			"\n"
+			" options:\n"
+			"      -A, -async                 use asynchronous I/O\n"
+			"      -C, -cached                use cached I/O (no cache flush/drop)\n"
+			"      -D, -direct                use direct I/O (O_DIRECT)\n"
+			"      -G, -read-write            read-write ping-pong mode\n"
+			"      -L, -linear                use sequential operations\n"
+			"      -W, -write                 use write I/O (please read manpage)\n"
+			"      -Y, -sync                  use sync I/O (O_SYNC)\n"
+			"      -y, -dsync                 use data sync I/O (O_DSYNC)\n"
+			"      -R, -rapid                 test with rapid I/O during 3s (-q -i 0 -w 3)\n"
+			"      -k, -keep                  keep and reuse temporary file (ioping.tmp)\n"
+			"\n"
+			" parameters:\n"
+			"      -a, -warmup <count>        ignore <count> first requests (1)\n"
+			"      -c, -count <count>         stop after <count> requests\n"
+			"      -i, -interval <time>       interval between requests (1s)\n"
+			"      -s, -size <size>           request size (4k)\n"
+			"      -S, -work-size <size>      working set size (1m)\n"
+			"      -o, -work-offset <size>    working set offset (0)\n"
+			"      -w, -work-time <time>      stop after <time> passed\n"
+			"      -l, -speed-limit <size>    limit speed with <size> per second\n"
+			"\n"
+			" output:\n"
+			"      -p, -print-count <count>   print raw statistics for every <count> requests\n"
+			"      -P, -print-interval <time> print raw statistics for every <time>\n"
+			"      -t, -min-time <time>       minimal valid request time (0us)\n"
+			"      -T, -max-time <time>       maximum valid request time\n"
+			"      -B, -batch                 print final statistics in raw format\n"
+			"      -J, -json                  print output in JSON format\n"
+			"      -q, -quiet                 suppress human-readable output\n"
+			"      -h, -help                  display this message and exit\n"
+			"      -v, -version               display version and exit\n"
+			"\n"
+	       );
+}
 
 void parse_options(int argc, char **argv)
 {
