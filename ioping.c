@@ -394,8 +394,8 @@ static struct suffix time_suffix[] = {
 	{ NULL,		0ll },
 };
 
-long long parse_suffix(const char *str, struct suffix *sfx,
-		       long long min, long long max)
+double parse_suffix(const char *str, struct suffix *sfx,
+		    long long min, long long max)
 {
 	char *end;
 	double val, den;
@@ -501,6 +501,7 @@ long long interval = NSEC_PER_SEC;
 struct timespec interval_ts;
 long long deadline = 0;
 long long speed_limit = 0;
+double rate_limit = 0;
 
 long long min_valid_time = 0;
 long long max_valid_time = LLONG_MAX;
@@ -524,7 +525,7 @@ int json_line = 0;
 
 int exiting = 0;
 
-const char *options = "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:a:J";
+const char *options = "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:J";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -557,6 +558,7 @@ static struct option long_options[] = {
 
 	{"interval",	required_argument,	NULL,	'i'},
 	{"speed-limit",	required_argument,	NULL,	'l'},
+	{"rate-limit",  required_argument,	NULL,	'r'},
 
 	{"warmup",	required_argument,	NULL,	'a'},
 	{"min-time",	required_argument,	NULL,	't'},
@@ -598,6 +600,7 @@ void usage(void)
 			"      -o, -work-offset <size>    working set offset (0)\n"
 			"      -w, -work-time <time>      stop after <time> passed\n"
 			"      -l, -speed-limit <size>    limit speed with <size> per second\n"
+			"      -r, -rate-limit <count>    limit rate with <count> per second\n"
 			"\n"
 			" output:\n"
 			"      -p, -print-count <count>   print raw statistics for every <count> requests\n"
@@ -642,7 +645,14 @@ void parse_options(int argc, char **argv)
 				default_size = 1<<18;
 				break;
 			case 'l':
+				if (!custom_interval)
+					interval = 0;
 				speed_limit = parse_size(optarg);
+				break;
+			case 'r':
+				if (!custom_interval)
+					interval = 0;
+				rate_limit = parse_suffix(optarg, int_suffix, 0, NSEC_PER_SEC);
 				break;
 			case 'R':
 				if (!custom_interval)
@@ -1368,11 +1378,19 @@ int main (int argc, char **argv)
 	if (size <= 0)
 		errx(1, "request size must be greater than zero");
 
-	if (custom_interval && speed_limit)
-		errx(1, "speed limit and interval cannot be set simultaneously");
+	if (speed_limit) {
+		long long i = size * NSEC_PER_SEC / speed_limit;
 
-	if (speed_limit)
-		interval = size * NSEC_PER_SEC / speed_limit;
+		if (i > interval)
+			interval = i;
+	}
+
+	if (rate_limit) {
+		long long i = NSEC_PER_SEC / rate_limit;
+
+		if (i > interval)
+			interval = i;
+	}
 
 #ifdef MAX_RW_COUNT
 	if (size > MAX_RW_COUNT)

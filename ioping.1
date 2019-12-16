@@ -8,6 +8,7 @@ ioping \- simple disk I/O latency monitoring tool
 .OP \-c count
 .OP \-i interval
 .OP \-l speed
+.OP \-r rate
 .OP \-t time
 .OP \-T time
 .OP \-s size
@@ -38,7 +39,10 @@ Stop after \fIcount\fR requests, default \fB0\fR (infinite).
 Set \fItime\fR between requests, default \fB1s\fR.
 .TP
 \fB\-l\fR, \fB\-speed-limit\fR \fIsize\fR
-Set speed limit in \fIsize\fR per second. Set interval to request-size / speed.
+Set speed limit in \fIsize\fR per second. Increases interval to request-size / speed.
+.TP
+\fB\-r\fR, \fB\-rate-limit\fR \fIcount\fR
+Set rate limit in \fIcount\fR per second. Increases interval to 1 / rate.
 .TP
 \fB\-t\fR, \fB\-min\-time\fR \fItime\fR
 Minimal valid request time (\fB0us\fR).
