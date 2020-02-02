@@ -1,4 +1,19 @@
 
+v1.2 / 2020-02-02
+==================
+
+  * makefile: merge compiling and linking
+  * ioping: add -r, -rate-limit
+  * ioping: reformat usage
+  * Merge pull request #42 from kohju/patch-Solaris
+  * Support for Solaris.
+  * ioping: option -J|-json for printing JSON
+  * ioping: add option -a|-warmup <count>
+  * ioping: add long options
+  * ioping: print filesystem size for file or directory target
+  * Merge pull request #39 from justinpitts/patch-1
+  * Fix grammar mistake.
+
 v1.1 / 2018-09-11
 ==================
 
