@@ -6,7 +6,6 @@ BINDIR=$(PREFIX)/bin
 MAN1DIR=$(PREFIX)/share/man/man1
 
 SRCS=ioping.c
-OBJS=$(SRCS:.c=.o)
 BINARY=ioping
 MANS=ioping.1
 MANS_F=$(MANS:.1=.txt) $(MANS:.1=.pdf)
@@ -53,7 +52,7 @@ checkver:
 	fi
 
 clean:
-	$(RM) -f $(OBJS) $(BINARY) $(MANS_F) ioping.tmp
+	$(RM) -f $(BINARY) $(MANS_F) ioping.tmp
 
 strip: $(BINARY)
 	$(STRIP) $^
@@ -70,9 +69,6 @@ install: $(BINARY) $(MANS)
 	mkdir -p $(DESTDIR)$(MAN1DIR)
 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
 
-%.o: %.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
 %.ps: %.1
 	man -t ./$< > $@
 
@@ -82,7 +78,7 @@ install: $(BINARY) $(MANS)
 %.txt: %.1
 	MANWIDTH=80 man ./$< | col -b > $@
 
-$(BINARY): $(OBJS)
+$(BINARY): $(SRCS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 dist: checkver $(DISTFILES)
