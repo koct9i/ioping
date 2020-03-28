@@ -181,6 +181,11 @@ void warnx(const char *fmt, ...)
 #define NSEC_PER_SEC	1000000000ll
 #define USEC_PER_SEC	1000000L
 
+int timestamp_uptodate;
+char timestamp_str[64];
+char localtime_str[64];
+const char *localtime_fmt = "%b %d %T";
+
 #ifdef HAVE_CLOCK_GETTIME
 
 static inline long long now(void)
@@ -193,14 +198,24 @@ static inline long long now(void)
 	return ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
 }
 
-static inline double timestamp(void)
+static inline void update_timestamp(void)
 {
 	struct timespec ts;
+	struct tm tm;
+
+	if (timestamp_uptodate)
+		return;
+
+	timestamp_uptodate = 1;
 
 	if (clock_gettime(CLOCK_REALTIME, &ts))
 		err(3, "clock_gettime failed");
 
-	return ts.tv_sec + (double)ts.tv_nsec / NSEC_PER_SEC;
+	snprintf(timestamp_str, sizeof(timestamp_str), "%f",
+		 ts.tv_sec + (double)ts.tv_nsec / NSEC_PER_SEC);
+
+	localtime_r(&ts.tv_sec, &tm);
+	strftime(localtime_str, sizeof(localtime_str), localtime_fmt, &tm);
 }
 
 #else
@@ -215,14 +230,24 @@ static inline long long now(void)
 	return tv.tv_sec * NSEC_PER_SEC + tv.tv_usec * 1000ll;
 }
 
-static inline double timestamp(void)
+static inline void update_timestamp(void)
 {
 	struct timeval tv;
+	struct tm tm;
+
+	if (timestamp_uptodate)
+		return;
+
+	timestamp_uptodate = 1;
 
 	if (gettimeofday(&tv, NULL))
 		err(3, "gettimeofday failed");
 
-	return tv.tv_sec + (double)tv.tv_usec / USEC_PER_SEC;
+	snprintf(timestamp_str, sizeof(timestamp_str), "%f",
+		 tv.tv_sec + (double)tv.tv_usec / USEC_PER_SEC);
+
+	localtime_r(&tv.tv_sec, &tm);
+	strftime(localtime_str, sizeof(localtime_str), localtime_fmt, &tm);
 }
 
 #endif /* HAVE_CLOCK_GETTIME */
@@ -722,6 +747,7 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'J':
 				json = 1;
+				localtime_fmt = "%FT%T%z";
 				break;
 			case 'c':
 				stop_at_request = parse_int(optarg);
@@ -1273,8 +1299,11 @@ static void dump_statistics(struct statistics *s) {
 
 static void json_request(size_t io_size, long long io_time, int valid)
 {
+	update_timestamp();
+
 	printf("%s{\n"
-	       "  \"timestamp\": %f,\n"
+	       "  \"timestamp\": %s,\n"
+	       "  \"localtime\": \"%s\",\n"
 	       "  \"target\": {\n"
 	       "    \"path\": \"%s\",\n"
 	       "    \"fstype\": \"%s\",\n"
@@ -1290,7 +1319,8 @@ static void json_request(size_t io_size, long long io_time, int valid)
 	       "  }\n"
 	       "}",
 	       json_line++ ? "," : "",
-	       timestamp(),
+	       timestamp_str,
+	       localtime_str,
 	       path,
 	       fstype,
 	       device,
@@ -1305,8 +1335,11 @@ static void json_request(size_t io_size, long long io_time, int valid)
 
 static void json_statistics(struct statistics *s)
 {
+	update_timestamp();
+
 	printf("%s{\n"
-	       "  \"timestamp\": %f,\n"
+	       "  \"timestamp\": %s,\n"
+	       "  \"localtime\": \"%s\",\n"
 	       "  \"target\": {\n"
 	       "    \"path\": \"%s\",\n"
 	       "    \"fstype\": \"%s\",\n"
@@ -1333,7 +1366,8 @@ static void json_statistics(struct statistics *s)
 	       "  }\n"
 	       "}",
 	       json_line++ ? "," : "",
-	       timestamp(),
+	       timestamp_str,
+	       localtime_str,
 	       path,
 	       fstype,
 	       device,
@@ -1607,6 +1641,8 @@ skip_preparation:
 			time_next = time_now;
 
 		this_time = time_now - this_time;
+
+		timestamp_uptodate = 0;
 
 		valid = add_statistics(&part, this_time);
 
