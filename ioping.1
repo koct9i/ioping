@@ -230,6 +230,64 @@ Error during runtime.
 (9) total requests       (including warmup, too slow or too fast)
 .br
 (10) total running time  (nanoseconds)
+
+.SH JSON OUTPUT
+With option -J|--json ioping prints json array of objects:
+.br
+\fB[\fR
+.br
+\fB...\fR
+.br
+{
+  // timestamps
+  "timestamp": (unix time in seconds as float),
+  "localtime": (local time ISO 8601),
+
+  // io target
+  "target": {
+    "path": (target path),
+    "fstype": (filesystem name),
+    "device": (device name),
+    "device_size": (device size in bytes)
+  },
+
+  // io request
+  "io": {
+    "request": (request index),
+    "operation": (request type: "read" | "write"),
+    "size": (request size in bytes),
+    "time": (io time in ns),
+    "ignored": (ignored in statistics: true | false)
+  },
+
+  // statistics
+  "stat": {
+    "count": (nr reqeusts),
+    "size": (total io size in bytes),
+    "time": (total io time in ns),
+    "iops": (avg iops),
+    "bps": (avg rate),
+    "min": (min io time in ns),
+    "avg": (avg io time in ns),
+    "max": (max io time in ns),
+    "mdev": (standard deviation in ns)
+  },
+
+  // load statistics
+  "load": {
+    "count": (nr requests),
+    "size": (total io size in bytes),
+    "time": (total real time in ns),
+    "iops": (avg iops),
+    "bps": (avg rate)
+  },
+.br
+},
+.br
+\fB...\fR
+.br
+\fB]\fR
+
 .SH EXAMPLES
 .TP
 .B ioping .
@@ -248,6 +306,9 @@ Measure disk sequential speed.
 .TP
 .B ioping -RLB . | awk '{print $4}'
 Get disk sequential speed in bytes per second.
+.TP
+.B ioping -J . | jq -r --stream 'fromstream(1|truncate_stream(inputs)) | [.localtime, .io.time/1000000] | @tsv'
+Select localtime and io time in milliseconds from json outout.
 .SH SEE ALSO
 .BR iostat (1),
 .BR dd (1),
