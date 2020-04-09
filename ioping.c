@@ -509,6 +509,7 @@ int fd;
 void *buf;
 
 int quiet = 0;
+int time_info = 0;
 int batch_mode = 0;
 int direct = 0;
 int cached = 0;
@@ -550,7 +551,7 @@ int json_line = 0;
 
 int exiting = 0;
 
-const char *options = "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:J";
+const char *options = "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::J";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -562,6 +563,7 @@ static struct option long_options[] = {
 
 	{"quiet",	no_argument,		NULL,	'q'},
 	{"batch",	no_argument,		NULL,	'B'},
+	{"time",	optional_argument,	NULL,   'I'},
 	{"json",	no_argument,		NULL,	'J'},
 
 	{"rapid",	no_argument,		NULL,	'R'},
@@ -600,7 +602,7 @@ static struct option long_options[] = {
 void usage(void)
 {
 	fprintf(stderr,
-			" Usage: ioping [-ABCDRLWYykq] [-c count] [-i interval] [-s size] [-S wsize]\n"
+			" Usage: ioping [-ABCDIJRLWYykq] [-c count] [-i interval] [-s size] [-S wsize]\n"
 			"               [-o offset] [-w deadline] [-pP period] directory|file|device\n"
 			"        ioping -h | -v\n"
 			"\n"
@@ -633,6 +635,7 @@ void usage(void)
 			"      -t, -min-time <time>       minimal valid request time (0us)\n"
 			"      -T, -max-time <time>       maximum valid request time\n"
 			"      -B, -batch                 print final statistics in raw format\n"
+			"      -I, -time [format]         print current time for every request\n"
 			"      -J, -json                  print output in JSON format\n"
 			"      -q, -quiet                 suppress human-readable output\n"
 			"      -h, -help                  display this message and exit\n"
@@ -744,6 +747,11 @@ void parse_options(int argc, char **argv)
 			case 'B':
 				quiet = 1;
 				batch_mode = 1;
+				break;
+			case 'I':
+				time_info = 1;
+				if (optarg)
+					localtime_fmt = optarg;
 				break;
 			case 'J':
 				json = 1;
@@ -1651,6 +1659,10 @@ skip_preparation:
 		} else if (json) {
 			json_request(ret_size, this_time, valid);
 		} else {
+			if (time_info) {
+				update_timestamp();
+				printf("%s ", localtime_str);
+			}
 			print_size(ret_size);
 			printf(" %s %s (%s %s ", write_test ? ">>>" : "<<<",
 					path, fstype, device);

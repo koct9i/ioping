@@ -17,6 +17,7 @@ ioping \- simple disk I/O latency monitoring tool
 .OP \-w deadline
 .OP \-p period
 .OP \-P period
+.OP \-I [format]
 .IR directory | file | device
 .br
 .SY ioping
@@ -82,6 +83,11 @@ read and \fBfdatasync\fR(2) after each write.
 .TP
 \fB\-D\fR, \fB\-direct\fR
 Use direct I/O (see \fBO_DIRECT\fR in \fBopen\fR(2)).
+.TP
+\fB\-I\fR, \fB\-time\fR \fI[format]\fR
+Print current time for each request.
+Optional argument defines time format in \fBstrftime\fR(3) notation,
+default is "%b %d %T" (Jan 01 00:00:00).
 .TP
 \fB\-J\fR, \fB\-json\fR
 Print output in JSON format.
