@@ -357,7 +357,7 @@ int fdatasync(int fd)
 
 void version(void)
 {
-	fprintf(stderr, "ioping %s\n", VERSION EXTRA_VERSION);
+	fprintf(stdout, "ioping %s\n", VERSION EXTRA_VERSION);
 }
 
 struct suffix {
@@ -599,11 +599,11 @@ static struct option long_options[] = {
 
 #endif /* HAVE_GETOPT_LONG */
 
-void usage(void)
+void usage(FILE *output)
 {
-	fprintf(stderr,
-			" Usage: ioping [-ABCDIJRLWYykq] [-c count] [-i interval] [-s size] [-S wsize]\n"
-			"               [-o offset] [-w deadline] [-pP period] directory|file|device\n"
+	fprintf(output,
+			" Usage: ioping [-ABCDGIJLRWYkqy] [-c count] [-i interval] [-s size] [-S wsize]\n"
+			"               [-o offset] [-w deadline] [-P|-p period] directory|file|device\n"
 			"        ioping -h | -v\n"
 			"\n"
 			" options:\n"
@@ -628,15 +628,15 @@ void usage(void)
 			"      -w, -work-time <time>      stop after <time> passed\n"
 			"      -l, -speed-limit <size>    limit speed with <size> per second\n"
 			"      -r, -rate-limit <count>    limit rate with <count> per second\n"
-			"\n"
-			" output:\n"
-			"      -p, -print-count <count>   print raw statistics for every <count> requests\n"
-			"      -P, -print-interval <time> print raw statistics for every <time>\n"
 			"      -t, -min-time <time>       minimal valid request time (0us)\n"
 			"      -T, -max-time <time>       maximum valid request time\n"
+			"\n"
+			" output:\n"
 			"      -B, -batch                 print final statistics in raw format\n"
 			"      -I, -time [format]         print current time for every request\n"
 			"      -J, -json                  print output in JSON format\n"
+			"      -p, -print-count <count>   print statistics for every <count> requests\n"
+			"      -P, -print-interval <time> print statistics for every <time>\n"
 			"      -q, -quiet                 suppress human-readable output\n"
 			"      -h, -help                  display this message and exit\n"
 			"      -v, -version               display version and exit\n"
@@ -649,7 +649,7 @@ void parse_options(int argc, char **argv)
 	int opt;
 
 	if (argc < 2) {
-		usage();
+		usage(stdout);
 		exit(1);
 	}
 
@@ -663,7 +663,7 @@ void parse_options(int argc, char **argv)
 
 		switch (opt) {
 			case 'h':
-				usage();
+				usage(stdout);
 				exit(0);
 			case 'v':
 				version();
@@ -767,7 +767,8 @@ void parse_options(int argc, char **argv)
 				keep_file = 1;
 				break;
 			case '?':
-				usage();
+				fprintf(stderr, "\n");
+				usage(stderr);
 				exit(1);
 		}
 	}
