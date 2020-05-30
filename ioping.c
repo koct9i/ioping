@@ -51,6 +51,7 @@
 # include <sys/ioctl.h>
 # include <sys/mount.h>
 # include <sys/sysmacros.h>
+# include <sys/syscall.h>
 # define HAVE_CLOCK_GETTIME
 # define HAVE_POSIX_FADVICE
 # define HAVE_POSIX_MEMALIGN
@@ -60,7 +61,24 @@
 # define HAVE_ERR_INCLUDE
 # define HAVE_STATVFS
 # define MAX_RW_COUNT		0x7ffff000 /* 2G - 4K */
-#endif
+
+#undef RWF_NOWAIT
+# include <linux/aio_abi.h>
+# ifndef RWF_NOWAIT
+#  define aio_rw_flags aio_reserved1
+# endif
+#undef RWF_NOWAIT
+
+# include <sys/uio.h>
+# ifdef RWF_NOWAIT
+#  define HAVE_LINUX_PREADV2
+# endif
+
+# ifndef RWF_NOWAIT
+#  define RWF_NOWAIT	0x00000008
+# endif
+
+#endif /* __linux__ */
 
 #ifdef __gnu_hurd__
 # include <sys/ioctl.h>
@@ -513,6 +531,7 @@ int time_info = 0;
 int batch_mode = 0;
 int direct = 0;
 int cached = 0;
+int nowait = 0;
 int syncio = 0;
 int data_syncio = 0;
 int randomize = 1;
@@ -551,7 +570,7 @@ int json_line = 0;
 
 int exiting = 0;
 
-const char *options = "hvkALRDCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::J";
+const char *options = "hvkALRDNCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::J";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -570,6 +589,7 @@ static struct option long_options[] = {
 	{"linear",	no_argument,		NULL,	'L'},
 	{"direct",	no_argument,		NULL,	'D'},
 	{"cached",	no_argument,		NULL,	'C'},
+	{"nowait",	no_argument,		NULL,   'N'},
 	{"sync",	no_argument,		NULL,	'Y'},
 	{"dsync",	no_argument,		NULL,	'y'},
 	{"async",	no_argument,		NULL,	'A'},
@@ -602,7 +622,7 @@ static struct option long_options[] = {
 void usage(FILE *output)
 {
 	fprintf(output,
-			" Usage: ioping [-ABCDGIJLRWYkqy] [-c count] [-i interval] [-s size] [-S wsize]\n"
+			" Usage: ioping [-ABCDGIJLNRWYkqy] [-c count] [-i interval] [-s size] [-S wsize]\n"
 			"               [-o offset] [-w deadline] [-P|-p period] directory|file|device\n"
 			"        ioping -h | -v\n"
 			"\n"
@@ -612,6 +632,7 @@ void usage(FILE *output)
 			"      -D, -direct                use direct I/O (O_DIRECT)\n"
 			"      -G, -read-write            read-write ping-pong mode\n"
 			"      -L, -linear                use sequential operations\n"
+			"      -N, -nowait                use nowait I/O (RWF_NOWAIT)\n"
 			"      -W, -write                 use write I/O (please read manpage)\n"
 			"      -Y, -sync                  use sync I/O (O_SYNC)\n"
 			"      -y, -dsync                 use data sync I/O (O_DSYNC)\n"
@@ -695,6 +716,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'C':
 				cached = 1;
+				break;
+			case 'N':
+				nowait = 1;
 				break;
 			case 'A':
 				async = 1;
@@ -920,10 +944,47 @@ ssize_t (*make_pread) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
 ssize_t (*make_pwrite) (int fd, void *buf, size_t nbytes, off_t offset) = do_pwrite;
 ssize_t (*make_request) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
 
-#ifdef HAVE_LINUX_ASYNC_IO
+#ifdef HAVE_LINUX_PREADV2
 
-#include <sys/syscall.h>
-#include <linux/aio_abi.h>
+ssize_t do_preadv2(int fd, void *buf, size_t nbytes, off_t offset)
+{
+	struct iovec iov = {
+		.iov_base = buf,
+		.iov_len = nbytes,
+	};
+	int flags = 0;
+
+	if (nowait)
+		flags |= RWF_NOWAIT;
+
+	return preadv2(fd, &iov, 1, offset, flags);
+}
+
+ssize_t do_pwritev2(int fd, void *buf, size_t nbytes, off_t offset)
+{
+	struct iovec iov = {
+		.iov_base = buf,
+		.iov_len = nbytes,
+	};
+	int flags = 0;
+	ssize_t ret;
+
+	if (nowait)
+		flags |= RWF_NOWAIT;
+
+	ret = pwritev2(fd, &iov, 1, offset, flags);
+	if (ret < 0)
+		return ret;
+
+	if (!cached && fdatasync(fd) < 0)
+		err(3, "fdatasync failed, please retry with option -C");
+
+	return ret;
+}
+
+#endif /* HAVE_LINUX_PREADV2 */
+
+#ifdef HAVE_LINUX_ASYNC_IO
 
 static long io_setup(unsigned nr_reqs, aio_context_t *ctx) {
 	return syscall(__NR_io_setup, nr_reqs, ctx);
@@ -961,6 +1022,10 @@ static ssize_t aio_pread(int fd, void *buf, size_t nbytes, off_t offset)
 	aio_cb.aio_buf = (unsigned long) buf;
 	aio_cb.aio_nbytes = nbytes;
 	aio_cb.aio_offset = offset;
+	aio_cb.aio_rw_flags = 0;
+
+	if (nowait)
+		aio_cb.aio_rw_flags |= RWF_NOWAIT;
 
 	if (io_submit(aio_ctx, 1, &aio_cbp) != 1)
 		err(1, "aio submit failed");
@@ -983,6 +1048,10 @@ static ssize_t aio_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
 	aio_cb.aio_buf = (unsigned long) buf;
 	aio_cb.aio_nbytes = nbytes;
 	aio_cb.aio_offset = offset;
+	aio_cb.aio_rw_flags = 0;
+
+	if (nowait)
+		aio_cb.aio_rw_flags |= RWF_NOWAIT;
 
 	if (io_submit(aio_ctx, 1, &aio_cbp) != 1)
 		err(1, "aio submit failed");
@@ -1025,7 +1094,7 @@ static void aio_setup(void)
 	make_pwrite = aio_pwrite;
 }
 
-#else
+#else /* HAVE_LINUX_ASYNC_IO */
 
 static void aio_setup(void)
 {
@@ -1034,7 +1103,7 @@ static void aio_setup(void)
 #endif
 }
 
-#endif
+#endif /* HAVE_LINUX_ASYNC_IO */
 
 #ifdef __MINGW32__
 
@@ -1461,8 +1530,19 @@ int main (int argc, char **argv)
 # endif
 #endif
 
-	if (async)
+	if (async) {
 		aio_setup();
+	} else if (nowait) {
+#ifdef HAVE_LINUX_PREADV2
+		make_pread = do_preadv2;
+		make_pwrite = do_pwritev2;
+#else
+		warnx("nowait I/O is not supported");
+#endif
+	}
+
+	if (nowait && !cached && !direct)
+		warnx("nowait without cached or direct I/O is supposed to fail");
 
 	make_request = write_test ? make_pwrite : make_pread;
 
@@ -1636,7 +1716,9 @@ skip_preparation:
 		ret_size = make_request(fd, buf, size, offset + woffset);
 
 		if (ret_size < 0) {
-			if (errno != EINTR)
+			if (nowait && errno == EAGAIN)
+				ret_size = 0;
+			else if (errno != EINTR)
 				err(3, "request failed");
 		} else if (ret_size < size)
 			warnx("request returned less than expected: %zu", ret_size);

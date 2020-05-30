@@ -3,7 +3,7 @@
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
-.OP \-ABCDJLRWGYykq
+.OP \-ABCDJLNRWGYykq
 .OP \-a count
 .OP \-c count
 .OP \-i interval
@@ -95,6 +95,10 @@ Print output in JSON format.
 \fB\-L\fR, \fB\-linear\fR
 Use sequential operations rather than random. This also sets default request
 size to \fB256k\fR (as in \fB-size 256k\fR).
+.TP
+\fB\-N\fR, \fB\-nowait\fR
+Set RWF_NOWAIT on I/O, indicating to the kernel to do not wait if request
+cannot be executed immediately. (see \fBRWF_NOWAIT\fR in \fBpreadv2\fR(2))
 .TP
 \fB\-R\fR, \fB\-rapid\fR
 Disk seek rate test, or bandwidth test if used together with \fB-linear\fR.
