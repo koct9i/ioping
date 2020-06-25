@@ -1,6 +1,6 @@
 CFLAGS ?= -g -O2 -funroll-loops -ftree-vectorize
-CFLAGS += -std=gnu99 -Wall -Wextra -pedantic
-LIBS=-lm -lrt
+CFLAGS += -std=gnu99 -Wall -Wextra -pedantic -DHAVE_SQLITE3
+LIBS=-lm -lrt -lsqlite3
 PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 MAN1DIR=$(PREFIX)/share/man/man1

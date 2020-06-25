@@ -152,6 +152,15 @@
 # define HAVE_POSIX_FDATASYNC
 #endif
 
+#ifdef HAVE_SQLITE3 /* Support SQLite3 */
+# include <sqlite3.h>
+# ifdef _SQLITE3_H_ /* sqlite3.h from sqlite-devel-3.7.17-8.el7_7.1.x86_64 defines _SQLITE3_H_ ... */
+#  ifndef SQLITE3_H /* ... while sqlite3.h from sqlite-devel-3.26.0-6.el8.x86_64 defines SQLITE3_H ... */
+#   define SQLITE3_H /* ... so we make sure the former implies the latter. */
+#  endif /* SQLITE3_H */
+# endif /* _SQLITE3_H_ */
+#endif /* HAVE_SQLITE3 */
+
 #ifdef HAVE_STATVFS
 # include <sys/statvfs.h>
 #endif
@@ -570,7 +579,21 @@ int json_line = 0;
 
 int exiting = 0;
 
+#ifdef SQLITE3_H
+int use_sqlite3 = 0;
+int sqlite3_res = 0;
+sqlite3 *sqlite3_db;
+sqlite3_stmt *sqlite3_prep;
+char *sqlite_file = 0;
+char *sqlite_msg = 0;
+char *sql_query = 0;
+#endif /* SQLITE3_H */
+
+#ifdef SQLITE3_H
+const char *options = "hvkALRDNCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Q:J";
+#else /* not SQLITE3_H */
 const char *options = "hvkALRDNCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::J";
+#endif /* SQLITE3_H */
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -614,6 +637,10 @@ static struct option long_options[] = {
 	{"print-count", required_argument,	NULL,	'p'},
 	{"print-interval", required_argument,	NULL,	'P'},
 
+#ifdef SQLITE3_H
+	{"sqlite3",     required_argument,	NULL,	'Q'},
+#endif /* SQLITE3_H */
+
 	{0,		0,			NULL,	0},
 };
 
@@ -623,7 +650,13 @@ void usage(FILE *output)
 {
 	fprintf(output,
 			" Usage: ioping [-ABCDGIJLNRWYkqy] [-c count] [-i interval] [-s size] [-S wsize]\n"
-			"               [-o offset] [-w deadline] [-P|-p period] directory|file|device\n"
+			"               [-o offset] [-w deadline] [-P|-p period]"
+#ifdef SQLITE3_H
+			" [-Q sqlite-file]\n"
+			"               directory|file|device\n"
+#else /* not SQLITE3_H */
+			" directory|file|device\n"
+#endif /* SQLITE3_H */
 			"        ioping -h | -v\n"
 			"\n"
 			" options:\n"
@@ -656,6 +689,9 @@ void usage(FILE *output)
 			"      -B, -batch                 print final statistics in raw format\n"
 			"      -I, -time [format]         print current time for every request\n"
 			"      -J, -json                  print output in JSON format\n"
+#ifdef SQLITE3_H
+			"      -Q, -sqlite3 <file>        Output to SQLite3 database\n"
+#endif /* SQLITE3_H */
 			"      -p, -print-count <count>   print statistics for every <count> requests\n"
 			"      -P, -print-interval <time> print statistics for every <time>\n"
 			"      -q, -quiet                 suppress human-readable output\n"
@@ -777,6 +813,13 @@ void parse_options(int argc, char **argv)
 				if (optarg)
 					localtime_fmt = optarg;
 				break;
+#ifdef SQLITE3_H
+			case 'Q':
+				use_sqlite3 = 1;
+				if (optarg)
+					sqlite_file = optarg;
+				break;
+#endif /* SQLITE3_H */
 			case 'J':
 				json = 1;
 				localtime_fmt = "%FT%T%z";
@@ -1484,6 +1527,29 @@ int main (int argc, char **argv)
 	if (!json)
 		setvbuf(stdout, NULL, _IOLBF, 0);
 
+#ifdef SQLITE3_H
+	if (use_sqlite3) {
+		sql_query = malloc(512);
+		if((sqlite3_res = sqlite3_open(sqlite_file, &sqlite3_db))) {
+			sqlite3_close(sqlite3_db);
+			errx(1, "SQLite3: %s", sqlite3_errstr(sqlite3_res));
+		}
+
+		printf("SQLite3: Database file `%s` has been opened successfully.\n", sqlite_file);
+
+		if(write_read_test)
+			snprintf(sql_query, 512, "CREATE TABLE IF NOT EXISTS read (rqc, runt, iops, bps, minrqt, avgrqt, maxrqt, rqtdev, totreq, totrun, tstamp); CREATE TABLE IF NOT EXISTS write (rqc, runt, iops, bps, minrqt, avgrqt, maxrqt, rqtdev, totreq, totrun, tstamp);");
+		else if(write_test)
+			snprintf(sql_query, 512, "CREATE TABLE IF NOT EXISTS write (rqc, runt, iops, bps, minrqt, avgrqt, maxrqt, rqtdev, totreq, totrun, tstamp);");
+		else
+			snprintf(sql_query, 512, "CREATE TABLE IF NOT EXISTS read (rqc, runt, iops, bps, minrqt, avgrqt, maxrqt, rqtdev, totreq, totrun, tstamp);");
+		if((sqlite3_res = sqlite3_exec(sqlite3_db, sql_query, NULL, 0, &sqlite_msg))) {
+			sqlite3_close(sqlite3_db);
+			errx(1,"SQLite3: %s", sqlite3_errstr(sqlite3_res));
+		}
+
+	}
+#endif /* SQLITE3_H */
 	if (!size)
 		size = default_size;
 
@@ -1772,6 +1838,28 @@ skip_preparation:
 		if ((period_request && (part.valid >= period_request)) ||
 		    (period_time && (time_next >= period_deadline))) {
 			finish_statistics(&part, time_now);
+#ifdef SQLITE3_H
+			if(use_sqlite3) {
+				snprintf(sql_query, 512, "INSERT INTO %s VALUES (%lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu);",
+					write_test ? "write" : "read",
+					(unsigned long)part.valid,
+					(unsigned long)part.sum,
+					(unsigned long)part.iops,
+					(unsigned long)part.speed,
+					(unsigned long)part.min,
+					(unsigned long)part.avg,
+					(unsigned long)part.max,
+					(unsigned long)part.mdev,
+					(unsigned long)part.count,
+					(unsigned long)part.load_time,
+					(unsigned long)time(NULL));
+				if((sqlite3_res = sqlite3_exec(sqlite3_db, sql_query, NULL, 0, &sqlite_msg))) {
+					sqlite3_close(sqlite3_db);
+					errx(1,"SQLite3: %s", sqlite3_errstr(sqlite3_res));
+				}
+			} else
+#endif /* SQLITE3_H */
+
 			if (json)
 				json_statistics(&part);
 			else
@@ -1868,6 +1956,13 @@ skip_preparation:
 	printf(" / ");
 	print_time(total.mdev);
 	printf("\n");
+
+#ifdef SQLITE3_H
+	if(use_sqlite3) {
+		free(sql_query);
+		sqlite3_close(sqlite3_db);
+	}
+#endif /* SQLITE3_H */
 
 	return 0;
 }
