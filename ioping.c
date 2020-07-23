@@ -334,16 +334,6 @@ int fsync(int fd)
 	return FlushFileBuffers(h) ? 0 : -1;
 }
 
-void srandom(unsigned int seed)
-{
-	srand(seed);
-}
-
-long int random(void)
-{
-	return rand() * (RAND_MAX + 1) + rand();
-}
-
 int nanosleep(const struct timespec *req, struct timespec *rem)
 {
 	(void)rem;
@@ -538,6 +528,8 @@ int randomize = 1;
 int write_test = 0;
 int write_read_test = 0;
 
+unsigned long long random_entropy = 0;
+
 long long period_request = 0;
 long long period_time = 0;
 
@@ -570,7 +562,7 @@ int json_line = 0;
 
 int exiting = 0;
 
-const char *options = "hvkALRDNCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::J";
+const char *options = "hvkALRDNCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Je:";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -614,6 +606,8 @@ static struct option long_options[] = {
 	{"print-count", required_argument,	NULL,	'p'},
 	{"print-interval", required_argument,	NULL,	'P'},
 
+	{"entropy",	required_argument,	NULL,	'e'},
+
 	{0,		0,			NULL,	0},
 };
 
@@ -642,6 +636,7 @@ void usage(FILE *output)
 			" parameters:\n"
 			"      -a, -warmup <count>        ignore <count> first requests (1)\n"
 			"      -c, -count <count>         stop after <count> requests\n"
+			"      -e, -entropy <seed>        seed for random number generator (0)\n"
 			"      -i, -interval <time>       interval between requests (1s)\n"
 			"      -s, -size <size>           request size (4k)\n"
 			"      -S, -work-size <size>      working set size (1m)\n"
@@ -692,6 +687,9 @@ void parse_options(int argc, char **argv)
 			case 'L':
 				randomize = 0;
 				default_size = 1<<18;
+				break;
+			case 'e':
+				random_entropy = strtoull(optarg, NULL, 0);
 				break;
 			case 'l':
 				if (!custom_interval)
@@ -1265,11 +1263,23 @@ static inline unsigned long long random64(void)
 	return random_state[1] + s0;
 }
 
+/* splitmix64 */
+static unsigned long long random64_seed(void)
+{
+	unsigned long long result = random_entropy;
+
+	random_entropy = result + 0x9E3779B97f4A7C15;
+	result = (result ^ (result >> 30)) * 0xBF58476D1CE4E5B9;
+	result = (result ^ (result >> 27)) * 0x94D049BB133111EB;
+	return result ^ (result >> 31);
+}
+
 static void random_init(void)
 {
-	srandom(now());
-	random_state[0] = random();
-	random_state[1] = random();
+	if (!random_entropy)
+		random_entropy = now();
+	random_state[0] = random64_seed();
+	random_state[1] = random64_seed();
 	(void)random64();
 	(void)random64();
 }

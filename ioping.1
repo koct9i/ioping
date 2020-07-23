@@ -6,6 +6,7 @@ ioping \- simple disk I/O latency monitoring tool
 .OP \-ABCDJLNRWGYykq
 .OP \-a count
 .OP \-c count
+.OP \-e seed
 .OP \-i interval
 .OP \-l speed
 .OP \-r rate
@@ -35,6 +36,9 @@ Ignore in statistics first \fIcount\fR requests, default 1.
 .TP
 \fB\-c\fR, \fB\-count\fR \fIcount\fR
 Stop after \fIcount\fR requests, default \fB0\fR (infinite).
+.TP
+\fB\-e\fR, \fB\-entropy\fR \fIseed\fR
+Set seed for random number generator, default \fB0\fR (random).
 .TP
 \fB\-i\fR, \fB\-interval\fR \fItime\fR
 Set \fItime\fR between requests, default \fB1s\fR.
