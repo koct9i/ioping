@@ -513,7 +513,7 @@ char *fstype = "";
 char *device = "";
 long long device_size = 0;
 
-int fd;
+int target_fd = -1;
 void *buf;
 
 int quiet = 0;
@@ -1582,11 +1582,11 @@ int main (int argc, char **argv)
 			st.st_size = offset + temp_wsize;
 		parse_device(st.st_dev);
 	} else if (S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode)) {
-		fd = open_file(path, NULL);
-		if (fd < 0)
+		target_fd = open_file(path, NULL);
+		if (target_fd < 0)
 			err(2, "failed to open \"%s\"", path);
 
-		if (get_device_size(fd, &st)) {
+		if (get_device_size(target_fd, &st)) {
 			if (!S_ISCHR(st.st_mode))
 				err(2, "block get size ioctl failed");
 			st.st_size = offset + temp_wsize;
@@ -1619,11 +1619,11 @@ int main (int argc, char **argv)
 	random_memory(buf, size);
 
 	if (S_ISDIR(st.st_mode)) {
-		fd = open_file(path, "ioping.tmp");
-		if (fd < 0)
+		target_fd = open_file(path, "ioping.tmp");
+		if (target_fd < 0)
 			err(2, "failed to create temporary file at \"%s\"", path);
 		if (keep_file) {
-			if (fstat(fd, &st))
+			if (fstat(target_fd, &st))
 				err(2, "fstat at \"%s\" failed", path);
 			if (st.st_size >= offset + wsize)
 #ifndef __MINGW32__
@@ -1637,16 +1637,16 @@ int main (int argc, char **argv)
 				ret_size = wsize - woffset;
 			if (woffset)
 				random_memory(buf, ret_size);
-			ret_size = pwrite(fd, buf, ret_size, offset + woffset);
+			ret_size = pwrite(target_fd, buf, ret_size, offset + woffset);
 			if (ret_size <= 0)
 				err(2, "preparation write failed");
 		}
 skip_preparation:
-		if (fsync(fd))
+		if (fsync(target_fd))
 			err(2, "fsync failed");
 	} else if (S_ISREG(st.st_mode)) {
-		fd = open_file(path, NULL);
-		if (fd < 0)
+		target_fd = open_file(path, NULL);
+		if (target_fd < 0)
 			err(2, "failed to open \"%s\"", path);
 	}
 
@@ -1654,7 +1654,7 @@ skip_preparation:
 	if (S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)) {
 		struct statvfs vfs;
 
-		if (!fstatvfs(fd, &vfs))
+		if (!fstatvfs(target_fd, &vfs))
 			device_size = (long long)vfs.f_frsize * vfs.f_blocks;
 	}
 #endif
@@ -1662,7 +1662,7 @@ skip_preparation:
 	/* No readahead for non-cached I/O, we'll invalidate it anyway */
 	if (randomize || !cached) {
 #ifdef HAVE_POSIX_FADVICE
-		ret = posix_fadvise(fd, offset, wsize, POSIX_FADV_RANDOM);
+		ret = posix_fadvise(target_fd, offset, wsize, POSIX_FADV_RANDOM);
 		if (ret)
 			warn("fadvise(RANDOM) failed, "
 			     "operations might perform unneeded readahead");
@@ -1671,7 +1671,7 @@ skip_preparation:
 
 	if (!cached) {
 #ifdef HAVE_NOCACHE_IO
-		ret = fcntl(fd, F_NOCACHE, 1);
+		ret = fcntl(target_fd, F_NOCACHE, 1);
 		if (ret)
 			err(2, "fcntl(F_NOCACHE) failed, "
 			       "please retry with option -C");
@@ -1705,7 +1705,7 @@ skip_preparation:
 
 #ifdef HAVE_POSIX_FADVICE
 		if (!cached) {
-			ret = posix_fadvise(fd, offset + woffset, size,
+			ret = posix_fadvise(target_fd, offset + woffset, size,
 					    POSIX_FADV_DONTNEED);
 			if (ret)
 				err(3, "fadvise(DONTNEED) failed, "
@@ -1723,7 +1723,7 @@ skip_preparation:
 
 		this_time = now();
 
-		ret_size = make_request(fd, buf, size, offset + woffset);
+		ret_size = make_request(target_fd, buf, size, offset + woffset);
 
 		if (ret_size < 0) {
 			if (nowait && errno == EAGAIN)
