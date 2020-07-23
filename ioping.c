@@ -145,11 +145,20 @@
 # include <stdarg.h>
 # include <windows.h>
 # define HAVE_DIRECT_IO
+# define HAVE_SYNC_IO
 # define HAVE_MKOSTEMP /* not required */
 #endif
 
 #if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
 # define HAVE_POSIX_FDATASYNC
+#endif
+
+#ifdef O_SYNC
+# define HAVE_SYNC_IO
+#endif
+
+#ifdef O_DSYNC
+# define HAVE_DATA_SYNC_IO
 #endif
 
 #ifdef HAVE_STATVFS
@@ -1130,7 +1139,9 @@ int open_file(const char *path, const char *temp)
 	}
 
 	if (direct)
-		attr |= FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH;
+		attr |= FILE_FLAG_NO_BUFFERING;
+	if (syncio)
+		attr |= FILE_FLAG_WRITE_THROUGH;
 	if (randomize)
 		attr |= FILE_FLAG_RANDOM_ACCESS;
 	else
@@ -1561,12 +1572,12 @@ int main (int argc, char **argv)
 		errx(1, "direct I/O not supported by this platform");
 #endif
 
-#ifndef O_SYNC
+#ifndef HAVE_SYNC_IO
 	if (syncio)
 		errx(1, "sync I/O not supported by this platform");
 #endif
 
-#ifndef O_DSYNC
+#ifndef HAVE_DATA_SYNC_IO
 	if (data_syncio)
 		errx(1, "data sync I/O not supported by this platform");
 #endif
