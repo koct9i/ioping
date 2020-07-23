@@ -1526,18 +1526,18 @@ int main (int argc, char **argv)
 		temp_wsize = size;
 
 #if !defined(HAVE_POSIX_FADVICE) && !defined(HAVE_NOCACHE_IO)
-# if defined(HAVE_DIRECT_IO)
-	if (!direct && !cached) {
-		warnx("non-cached I/O not supported, will use direct I/O");
-		direct = cached = 1;
-	}
-# else
 	if (!cached && !write_test) {
+		cached = 1;
+# if defined(HAVE_DIRECT_IO)
+		if (!direct) {
+			warnx("non-cached I/O not supported, will use direct I/O");
+			direct = 1;
+		}
+# else
 		warnx("non-cached I/O not supported by this platform");
 		warnx("you can use write I/O to get reliable results");
-		cached = 1;
-	}
 # endif
+	}
 #endif
 
 	if (async) {
