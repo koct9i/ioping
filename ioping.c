@@ -935,16 +935,7 @@ int get_device_size(int fd, struct stat *st)
 
 ssize_t do_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
 {
-	ssize_t ret;
-
-	ret = pwrite(fd, buf, nbytes, offset);
-	if (ret < 0)
-		return ret;
-
-	if (!cached && fdatasync(fd) < 0)
-		err(3, "fdatasync failed, please retry with option -C");
-
-	return ret;
+       return pwrite(fd, buf, nbytes, offset);
 }
 
 ssize_t (*make_pread) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
@@ -974,19 +965,11 @@ ssize_t do_pwritev2(int fd, void *buf, size_t nbytes, off_t offset)
 		.iov_len = nbytes,
 	};
 	int flags = 0;
-	ssize_t ret;
 
 	if (nowait)
 		flags |= RWF_NOWAIT;
 
-	ret = pwritev2(fd, &iov, 1, offset, flags);
-	if (ret < 0)
-		return ret;
-
-	if (!cached && fdatasync(fd) < 0)
-		err(3, "fdatasync failed, please retry with option -C");
-
-	return ret;
+	return pwritev2(fd, &iov, 1, offset, flags);
 }
 
 #endif /* HAVE_LINUX_PREADV2 */
@@ -1071,22 +1054,7 @@ static ssize_t aio_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
 		return -1;
 	}
 
-	if (!cached && fdatasync(fd) < 0)
-		err(3, "fdatasync failed, please retry with option -C");
-
 	return aio_ev.res;
-
-#if 0
-	aio_cb.aio_lio_opcode = IOCB_CMD_FDSYNC;
-	if (io_submit(aio_ctx, 1, &aio_cbp) != 1)
-		err(1, "aio fdsync submit failed");
-
-	if (io_getevents(aio_ctx, 1, 1, &aio_ev, NULL) != 1)
-		err(1, "aio getevents failed");
-
-	if (aio_ev.res < 0)
-		return aio_ev.res;
-#endif
 }
 
 static void aio_setup(void)
@@ -1741,10 +1709,15 @@ skip_preparation:
 				ret_size = 0;
 			else if (errno != EINTR)
 				err(3, "request failed");
-		} else if (ret_size < size)
-			warnx("request returned less than expected: %zu", ret_size);
-		else if (ret_size > size)
-			errx(3, "request returned more than expected: %zu", ret_size);
+		} else {
+			if (ret_size < size)
+				warnx("request returned less than expected: %zu", ret_size);
+			else if (ret_size > size)
+				errx(3, "request returned more than expected: %zu", ret_size);
+
+			if (write_test && !cached && fdatasync(target_fd) < 0)
+				err(3, "fdatasync failed, please retry with option -C");
+		}
 
 		time_now = now();
 
