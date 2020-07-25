@@ -126,6 +126,7 @@
 # include <sys/mount.h>
 # include <sys/disk.h>
 # include <sys/uio.h>
+# define HAVE_FULLFSYNC
 # define HAVE_NOCACHE_IO
 # define HAVE_ERR_INCLUDE
 # define HAVE_STATVFS
@@ -362,13 +363,6 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 		return -ENOMEM;
 	*memptr = ptr + alignment - (size_t)ptr % alignment;
 	return 0;
-}
-#endif
-
-#ifndef HAVE_POSIX_FDATASYNC
-int fdatasync(int fd)
-{
-	return fsync(fd);
 }
 #endif
 
@@ -936,6 +930,29 @@ int get_device_size(int fd, struct stat *st)
 ssize_t do_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
 {
        return pwrite(fd, buf, nbytes, offset);
+}
+
+void sync_file(int fd)
+{
+#ifdef HAVE_FULLFSYNC
+	static bool have_fullfsync = true;
+
+	if (have_fullfsync) {
+		if (fcntl(fd, F_FULLFSYNC, 0) < 0) {
+			warn("fcntl(F_FULLFSYNC) failed, fallback to fsync");
+			have_fullfsync = false;
+		} else
+			return;
+	}
+#endif
+
+#ifdef HAVE_POSIX_FDATASYNC
+	if (fdatasync(fd) < 0)
+		err(3, "fdatasync failed, please retry with option -C");
+#else
+	if (fsync(fd) < 0)
+		err(3, "fsync failed, please retry with option -C");
+#endif
 }
 
 ssize_t (*make_pread) (int fd, void *buf, size_t nbytes, off_t offset) = pread;
@@ -1715,8 +1732,8 @@ skip_preparation:
 			else if (ret_size > size)
 				errx(3, "request returned more than expected: %zu", ret_size);
 
-			if (write_test && !cached && fdatasync(target_fd) < 0)
-				err(3, "fdatasync failed, please retry with option -C");
+			if (write_test && !cached)
+				sync_file(target_fd);
 		}
 
 		time_now = now();
