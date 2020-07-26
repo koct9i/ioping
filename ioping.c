@@ -278,7 +278,8 @@ static inline void update_timestamp(void)
 	snprintf(timestamp_str, sizeof(timestamp_str), "%f",
 		 tv.tv_sec + (double)tv.tv_usec / USEC_PER_SEC);
 
-	localtime_r(&tv.tv_sec, &tm);
+	time_t t = tv.tv_sec; /* windows bug */
+	localtime_r(&t, &tm);
 	strftime(localtime_str, sizeof(localtime_str), localtime_fmt, &tm);
 }
 
@@ -1067,7 +1068,7 @@ static ssize_t aio_pread(int fd, void *buf, size_t nbytes, off_t offset)
 {
 	aio_cb.aio_lio_opcode = IOCB_CMD_PREAD;
 	aio_cb.aio_fildes = fd;
-	aio_cb.aio_buf = (unsigned long) buf;
+	aio_cb.aio_buf = (intptr_t)buf;
 	aio_cb.aio_nbytes = nbytes;
 	aio_cb.aio_offset = offset;
 	aio_cb.aio_rw_flags = 0;
@@ -1093,7 +1094,7 @@ static ssize_t aio_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
 {
 	aio_cb.aio_lio_opcode = IOCB_CMD_PWRITE;
 	aio_cb.aio_fildes = fd;
-	aio_cb.aio_buf = (unsigned long) buf;
+	aio_cb.aio_buf = (intptr_t)buf;
 	aio_cb.aio_nbytes = nbytes;
 	aio_cb.aio_offset = offset;
 	aio_cb.aio_rw_flags = 0;
@@ -1184,7 +1185,8 @@ int open_file(const char *path, const char *temp)
 
 	if (h == INVALID_HANDLE_VALUE)
 		return -1;
-	return _open_osfhandle((long)h, 0);
+
+	return _open_osfhandle((intptr_t)h, 0);
 }
 
 BOOL WINAPI sig_exit(DWORD type)

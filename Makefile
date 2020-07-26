@@ -1,6 +1,3 @@
-CFLAGS ?= -g -O2 -funroll-loops -ftree-vectorize
-CFLAGS += -std=gnu99 -Wall -Wextra -pedantic
-LIBS=-lm -lrt
 PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 MAN1DIR=$(PREFIX)/share/man/man1
@@ -22,21 +19,30 @@ VERSION:=$(SRC_VER)$(EXTRA_VERSION)
 DISTDIR=$(PACKAGE)-$(VERSION)
 DISTFILES=$(SRCS) $(MANS) $(DOCS) $(SPEC) Makefile
 PACKFILES=$(BINARY) $(MANS) $(MANS_F) $(DOCS)
-CPPFLAGS+=-DEXTRA_VERSION=\"${EXTRA_VERSION}\"
 
-STRIP=strip
-TARGET=$(shell ${CC} -dumpmachine)
+CFLAGS		?= -g -O2 -funroll-loops -ftree-vectorize
+CFLAGS		+= -std=gnu99 -Wall -Wextra -pedantic
+CFLAGS		+= -DEXTRA_VERSION=\"${EXTRA_VERSION}\"
+
+LIBS		= -lm -lrt
+
+MINGW		= x86_64-w64-mingw32-
+MINGW_CFLAGS	= -specs=ucrt-spec -Wno-format
+MINGW_LIBS	= -lm
+
+CC		= $(CROSS_COMPILE)gcc
+STRIP		= $(CROSS_COMPILE)strip
+TARGET		= $(shell ${CC} -dumpmachine)
 
 ifneq (,$(findstring -apple-,${TARGET}))
 LIBS=-lm
 endif
 
-ifdef MINGW
-CC=i686-w64-mingw32-gcc
-STRIP=i686-w64-mingw32-strip
-TARGET=win32
-BINARY:=$(BINARY:=.exe)
-LIBS=-lm
+ifneq (,$(findstring -mingw,${TARGET}))
+BINARY		:= $(BINARY:=.exe)
+CFLAGS		+= ${MINGW_CFLAGS}
+LIBS		:= ${MINGW_LIBS}
+${BINARY}: ucrt-spec
 endif
 
 all: checkver $(BINARY)
@@ -79,7 +85,13 @@ install: $(BINARY) $(MANS)
 	MANWIDTH=80 man ./$< | col -b > $@
 
 $(BINARY): $(SRCS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(LIBS)
+	$(CC) -o $@ $(SRCS) $(CFLAGS) $(LDFLAGS) $(LIBS)
+
+ucrt-spec:
+	${MINGW}gcc -dumpspecs | sed 's/-lmsvcrt/-lucrt/' > $@
+
+mingw:
+	$(MAKE) CROSS_COMPILE=${MINGW}
 
 dist: checkver $(DISTFILES)
 	tar -cz --transform='s,^,$(DISTDIR)/,S' $^ -f $(DISTDIR).tar.gz
