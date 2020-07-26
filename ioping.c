@@ -1415,16 +1415,13 @@ static void finish_statistics(struct statistics *s, unsigned long long finish) {
 }
 
 static void dump_statistics(struct statistics *s) {
-	printf("%lu %.0f %.0f %.0f %lu %.0f %lu %.0f %lu %lu\n",
-			(unsigned long)s->valid, s->sum,
-			s->iops, s->speed,
-			(unsigned long)s->min, s->avg,
-			(unsigned long)s->max, s->mdev,
-			(unsigned long)s->count,
-			(unsigned long)s->load_time);
+	printf("%llu %.0f %.0f %.0f %llu %.0f %llu %.0f %llu %llu\n",
+	       s->valid, s->sum, s->iops, s->speed,
+	       s->min, s->avg, s->max, s->mdev,
+	       s->count, s->load_time);
 }
 
-static void json_request(size_t io_size, long long io_time, int valid)
+static void json_request(long long io_size, long long io_time, int valid)
 {
 	update_timestamp();
 
@@ -1435,13 +1432,13 @@ static void json_request(size_t io_size, long long io_time, int valid)
 	       "    \"path\": \"%s\",\n"
 	       "    \"fstype\": \"%s\",\n"
 	       "    \"device\": \"%s\",\n"
-	       "    \"device_size\": %ld\n"
+	       "    \"device_size\": %lld\n"
 	       "  },\n"
 	       "  \"io\": {\n"
-	       "    \"request\": %ld,\n"
+	       "    \"request\": %lld,\n"
 	       "    \"operation\": \"%s\",\n"
-	       "    \"size\": %ld,\n"
-	       "    \"time\": %lu,\n"
+	       "    \"size\": %lld,\n"
+	       "    \"time\": %llu,\n"
 	       "    \"ignored\": %s\n"
 	       "  }\n"
 	       "}",
@@ -1451,11 +1448,11 @@ static void json_request(size_t io_size, long long io_time, int valid)
 	       path,
 	       fstype,
 	       device,
-	       (long)device_size,
-	       (long)request,
+	       device_size,
+	       request,
 	       write_test ? "write" : "read",
-	       (unsigned long)io_size,
-	       (unsigned long)io_time,
+	       io_size,
+	       io_time,
 	       valid ? "false" : "true");
 	fflush(stdout);
 }
@@ -1471,23 +1468,23 @@ static void json_statistics(struct statistics *s)
 	       "    \"path\": \"%s\",\n"
 	       "    \"fstype\": \"%s\",\n"
 	       "    \"device\": \"%s\",\n"
-	       "    \"device_size\": %ld\n"
+	       "    \"device_size\": %lld\n"
 	       "  },\n"
 	       "  \"stat\": {\n"
-	       "    \"count\": %lu,\n"
-	       "    \"size\": %lu,\n"
+	       "    \"count\": %llu,\n"
+	       "    \"size\": %llu,\n"
 	       "    \"time\": %.0f,\n"
 	       "    \"iops\": %f,\n"
 	       "    \"bps\": %.0f,\n"
-	       "    \"min\": %lu,\n"
+	       "    \"min\": %llu,\n"
 	       "    \"avg\": %.0f,\n"
-	       "    \"max\": %lu,\n"
+	       "    \"max\": %llu,\n"
 	       "    \"mdev\": %.0f\n"
 	       "  },\n"
 	       "  \"load\": {\n"
-	       "    \"count\": %lu,\n"
-	       "    \"size\": %lu,\n"
-	       "    \"time\": %lu,\n"
+	       "    \"count\": %llu,\n"
+	       "    \"size\": %llu,\n"
+	       "    \"time\": %llu,\n"
 	       "    \"iops\": %f,\n"
 	       "    \"bps\": %.0f\n"
 	       "  }\n"
@@ -1498,19 +1495,19 @@ static void json_statistics(struct statistics *s)
 	       path,
 	       fstype,
 	       device,
-	       (long)device_size,
-	       (unsigned long)s->valid,
-	       (unsigned long)s->size,
+	       device_size,
+	       s->valid,
+	       s->size,
 	       s->sum,
 	       s->iops,
 	       s->speed,
-	       (unsigned long)s->min,
+	       s->min,
 	       s->avg,
-	       (unsigned long)s->max,
+	       s->max,
 	       s->mdev,
-	       (unsigned long)s->count,
-	       (unsigned long)s->load_size,
-	       (unsigned long)s->load_time,
+	       s->count,
+	       s->load_size,
+	       s->load_time,
 	       s->load_iops,
 	       s->load_speed);
 	fflush(stdout);
@@ -1797,7 +1794,7 @@ skip_preparation:
 			printf(" %s %s (%s %s ", write_test ? ">>>" : "<<<",
 					path, fstype, device);
 			print_size(device_size);
-			printf("): request=%lu time=", (long unsigned)request);
+			printf("): request=%llu time=", request);
 			print_time(this_time);
 			if (request <= warmup_request) {
 				printf(" (warmup)");
