@@ -29,6 +29,10 @@
 #define _GNU_SOURCE
 #define _FILE_OFFSET_BITS 64
 
+#ifdef __MINGW32__
+#define _WIN32_WINNT 0x0600
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -811,10 +815,13 @@ void parse_device(dev_t dev)
 {
 	char *buf = NULL, *ptr;
 	unsigned major, minor;
-	struct stat st;
+	struct statvfs vfs;
 	size_t len;
 	FILE *file;
 	char *real;
+
+	if (!fstatvfs(target_fd, &vfs))
+		device_size = (long long)vfs.f_frsize * vfs.f_blocks;
 
 	/* since v2.6.26 */
 	file = fopen("/proc/self/mountinfo", "r");
@@ -835,6 +842,8 @@ old:
 	if (!file)
 		return;
 	while (getline(&buf, &len, file) > 0) {
+		struct stat st;
+
 		ptr = buf;
 		strsep(&ptr, " ");
 		if (*buf != '/' || stat(buf, &st) || st.st_rdev != dev)
@@ -867,12 +876,44 @@ void parse_device(dev_t dev)
 
 	fstype = strdup(fs.f_fstypename);
 	device = strdup(fs.f_mntfromname);
+	device_size = (long long)fs.f_bsize * fs.f_blocks;
+}
+
+#elif defined(__MINGW32__)
+
+void parse_device(dev_t dev)
+{
+	HANDLE h = (HANDLE)_get_osfhandle(target_fd);
+	ULARGE_INTEGER total;
+	DWORD flags;
+	wchar_t wname[MAX_PATH + 1];
+	wchar_t wtype[MAX_PATH + 1];
+
+	(void)dev;
+
+	if (GetDiskFreeSpaceExA(path, NULL ,&total, NULL))
+		device_size = total.QuadPart;
+
+	if (GetVolumeInformationByHandleW(h, wname, MAX_PATH,
+					  NULL, NULL, &flags,
+					  wtype, MAX_PATH)) {
+		size_t len;
+
+		len = wcstombs(NULL, wname, 0) + 1;
+		device = malloc(len);
+		wcstombs(device, wname, len);
+
+		len = wcstombs(NULL, wtype, 0) + 1;
+		fstype = malloc(len);
+		wcstombs(fstype, wtype, len);
+	}
 }
 
 #else
 
 void parse_device(dev_t dev)
 {
+# warning no method to get filesystem name, device and size
 	(void)dev;
 }
 
@@ -1576,7 +1617,6 @@ int main (int argc, char **argv)
 	if (S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)) {
 		if (S_ISDIR(st.st_mode))
 			st.st_size = offset + temp_wsize;
-		parse_device(st.st_dev);
 	} else if (S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode)) {
 		target_fd = open_file(path, NULL);
 		if (target_fd < 0)
@@ -1646,14 +1686,8 @@ skip_preparation:
 			err(2, "failed to open \"%s\"", path);
 	}
 
-#ifdef HAVE_STATVFS
-	if (S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)) {
-		struct statvfs vfs;
-
-		if (!fstatvfs(target_fd, &vfs))
-			device_size = (long long)vfs.f_frsize * vfs.f_blocks;
-	}
-#endif
+	if (S_ISDIR(st.st_mode) || S_ISREG(st.st_mode))
+		parse_device(st.st_dev);
 
 	/* No readahead for non-cached I/O, we'll invalidate it anyway */
 	if (randomize || !cached) {
