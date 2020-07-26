@@ -22,7 +22,7 @@ PACKFILES=$(BINARY) $(MANS) $(MANS_F) $(DOCS)
 
 CFLAGS		?= -g -O2 -funroll-loops -ftree-vectorize
 CFLAGS		+= -std=gnu99 -Wall -Wextra -pedantic
-CFLAGS		+= -DEXTRA_VERSION=\"${EXTRA_VERSION}\"
+CPPFLAGS	= -DEXTRA_VERSION=\"${EXTRA_VERSION}\"
 
 LIBS		= -lm -lrt
 
@@ -85,7 +85,7 @@ install: $(BINARY) $(MANS)
 	MANWIDTH=80 man ./$< | col -b > $@
 
 $(BINARY): $(SRCS)
-	$(CC) -o $@ $(SRCS) $(CFLAGS) $(LDFLAGS) $(LIBS)
+	$(CC) -o $@ $(SRCS) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(LIBS)
 
 ucrt-spec:
 	${MINGW}gcc -dumpspecs | sed 's/-lmsvcrt/-lucrt/' > $@
