@@ -564,6 +564,8 @@ off_t woffset = 0;
 
 long long request = 0;
 long long warmup_request = 1;
+long long burst = 0;
+long long burst_request = 0;
 long long stop_at_request = 0;
 
 int json = 0;
@@ -571,7 +573,7 @@ int json_line = 0;
 
 int exiting = 0;
 
-const char *options = "hvkALRDNCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Je:";
+const char *options = "hvkALRDNCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Je:b:";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -605,6 +607,7 @@ static struct option long_options[] = {
 	{"work-time",	required_argument,	NULL,	'w'},
 
 	{"interval",	required_argument,	NULL,	'i'},
+	{"burst",	required_argument,	NULL,	'b'},
 	{"speed-limit",	required_argument,	NULL,	'l'},
 	{"rate-limit",  required_argument,	NULL,	'r'},
 
@@ -625,8 +628,7 @@ static struct option long_options[] = {
 void usage(FILE *output)
 {
 	fprintf(output,
-			" Usage: ioping [-ABCDGIJLNRWYkqy] [-c count] [-i interval] [-s size] [-S wsize]\n"
-			"               [-o offset] [-w deadline] [-P|-p period] directory|file|device\n"
+			" Usage: ioping [options...] directory|file|device\n"
 			"        ioping -h | -v\n"
 			"\n"
 			" options:\n"
@@ -644,6 +646,7 @@ void usage(FILE *output)
 			"\n"
 			" parameters:\n"
 			"      -a, -warmup <count>        ignore <count> first requests (1)\n"
+			"      -b, -burst <count>         make <count> requsts without delay (0)\n"
 			"      -c, -count <count>         stop after <count> requests\n"
 			"      -e, -entropy <seed>        seed for random number generator (0)\n"
 			"      -i, -interval <time>       interval between requests (1s)\n"
@@ -793,6 +796,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'a':
 				warmup_request = parse_int(optarg);
+				break;
+			case 'b':
+				burst = parse_int(optarg);
 				break;
 			case 'k':
 				keep_file = 1;
@@ -1455,7 +1461,6 @@ static void json_request(long long io_size, long long io_time, int valid)
 	       io_size,
 	       io_time,
 	       valid ? "false" : "true");
-	fflush(stdout);
 }
 
 static void json_statistics(struct statistics *s)
@@ -1511,7 +1516,6 @@ static void json_statistics(struct statistics *s)
 	       s->load_time,
 	       s->load_iops,
 	       s->load_speed);
-	fflush(stdout);
 }
 
 int main (int argc, char **argv)
@@ -1528,8 +1532,7 @@ int main (int argc, char **argv)
 
 	parse_options(argc, argv);
 
-	if (!json)
-		setvbuf(stdout, NULL, _IOLBF, 0);
+	setvbuf(stdout, NULL, _IOFBF, BUFSIZ);
 
 	if (!size)
 		size = default_size;
@@ -1772,7 +1775,11 @@ skip_preparation:
 
 		time_now = now();
 
-		time_next += interval;
+		if (!burst || ++burst_request == burst) {
+		    burst_request = 0;
+		    time_next += interval;
+		}
+
 		if ((time_now - time_next) > 0)
 			time_next = time_now;
 
@@ -1811,6 +1818,8 @@ skip_preparation:
 				else if (percent > 95)
 					printf(" (slow)");
 			}
+			if (burst && !burst_request)
+			    printf("\n");
 			printf("\n");
 		}
 
@@ -1821,6 +1830,7 @@ skip_preparation:
 				json_statistics(&part);
 			else
 				dump_statistics(&part);
+			fflush(stdout);
 			merge_statistics(&total, &part);
 			start_statistics(&part, time_now);
 			period_deadline = time_now + period_time;
@@ -1846,6 +1856,10 @@ skip_preparation:
 
 			interval_ts.tv_sec = delta / NSEC_PER_SEC;
 			interval_ts.tv_nsec = delta % NSEC_PER_SEC;
+
+			if (!quiet)
+			    fflush(stdout);
+
 			nanosleep(&interval_ts, NULL);
 		}
 	}

@@ -5,6 +5,7 @@ ioping \- simple disk I/O latency monitoring tool
 .SY ioping
 .OP \-ABCDJLNRWGYykq
 .OP \-a count
+.OP \-b count
 .OP \-c count
 .OP \-e seed
 .OP \-i interval
@@ -33,6 +34,11 @@ latency in real time.
 .TP
 \fB\-a\fR, \fB\-warmup\fR \fIcount\fR
 Ignore in statistics first \fIcount\fR requests, default 1.
+First request usually is much slower due to power-saving features.
+.TP
+\fB\-b\fR, \fB\-burst\fR \fIcount\fR
+Make series of \fIcount\fR requests without delay, default \fB0\fR.
+Aggressive power-saving features slow down requests even after short delay.
 .TP
 \fB\-c\fR, \fB\-count\fR \fIcount\fR
 Stop after \fIcount\fR requests, default \fB0\fR (infinite).
