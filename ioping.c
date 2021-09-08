@@ -30,7 +30,8 @@
 #define _FILE_OFFSET_BITS 64
 
 #ifdef __MINGW32__
-#define _WIN32_WINNT 0x0600
+# define _WIN32_WINNT 0x0600
+# define _POSIX_C_SOURCE 200809L
 #endif
 
 #include <stdio.h>
