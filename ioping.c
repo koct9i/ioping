@@ -1383,11 +1383,11 @@ static int add_statistics(struct statistics *s, long long val) {
 			s->max = val;
 
 		notice = NULL;
-		if (s->valid > 5 && s->min < s->max) {
-			int percent = (val - s->min) * 100 / (s->max - s->min);
-			if (percent < 5)
+		if (s->valid > 5) {
+			long long avg = s->sum / s->valid;
+			if (val * 2 < avg)
 				notice = "fast";
-			else if (percent > 95)
+			else if (val > avg * 2)
 				notice = "slow";
 		}
 
