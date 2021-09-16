@@ -526,6 +526,8 @@ long long device_size = 0;
 int target_fd = -1;
 void *buf;
 
+const char *notice = NULL;
+
 int quiet = 0;
 int time_info = 0;
 int batch_mode = 0;
@@ -1364,10 +1366,12 @@ static void start_statistics(struct statistics *s, unsigned long long start) {
 static int add_statistics(struct statistics *s, long long val) {
 	s->count++;
 	if (request <= warmup_request) {
-		/* warmup */
+		notice = "warmup";
 	} else if (val < min_valid_time) {
+		notice = "too fast";
 		s->too_fast++;
 	} else if (val > max_valid_time) {
+		notice = "too slow";
 		s->too_slow++;
 	} else {
 		s->valid++;
@@ -1377,6 +1381,16 @@ static int add_statistics(struct statistics *s, long long val) {
 			s->min = val;
 		if (val > s->max)
 			s->max = val;
+
+		notice = NULL;
+		if (s->valid > 5 && s->min < s->max) {
+			int percent = (val - s->min) * 100 / (s->max - s->min);
+			if (percent < 5)
+				notice = "fast";
+			else if (percent > 95)
+				notice = "slow";
+		}
+
 		return 1;
 	}
 
@@ -1805,20 +1819,8 @@ skip_preparation:
 			print_size(device_size);
 			printf("): request=%llu time=", request);
 			print_time(this_time);
-			if (request <= warmup_request) {
-				printf(" (warmup)");
-			} else if (this_time < min_valid_time) {
-				printf(" (too fast)");
-			} else if (this_time > max_valid_time) {
-				printf(" (too slow)");
-			} else if (part.valid > 5 && part.min < part.max) {
-				int percent = (this_time - part.min) * 100 /
-						(part.max - part.min);
-				if (percent < 5)
-					printf(" (fast)");
-				else if (percent > 95)
-					printf(" (slow)");
-			}
+			if (notice)
+			    printf(" (%s)", notice);
 			if (burst && !burst_request)
 			    printf("\n");
 			printf("\n");
