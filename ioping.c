@@ -1349,7 +1349,7 @@ static void random_memory(void *buf, size_t len)
 
 struct statistics {
 	long long start, finish, load_time;
-	long long count, valid, too_slow, too_fast;
+	long long count, valid, too_slow, too_fast, read_fail, write_fail;
 	long long min, max;
 	double sum, sum2, avg, mdev;
 	double speed, iops, load_speed, load_iops;
@@ -1367,6 +1367,8 @@ static int add_statistics(struct statistics *s, long long val) {
 	s->count++;
 	if (request <= warmup_request) {
 		notice = "warmup";
+	} else if (s->read_fail > 0 || s-> write_fail > 0){
+		notice = "failed";
 	} else if (val < min_valid_time) {
 		notice = "too fast";
 		s->too_fast++;
@@ -1399,6 +1401,8 @@ static int add_statistics(struct statistics *s, long long val) {
 
 static void merge_statistics(struct statistics *s, struct statistics *o) {
 	s->count += o->count;
+	s->read_fail += o->read_fail;
+	s->write_fail += o->write_fail;
 	s->too_fast += o->too_fast;
 	s->too_slow += o->too_slow;
 	if (o->valid) {
@@ -1437,10 +1441,10 @@ static void finish_statistics(struct statistics *s, unsigned long long finish) {
 }
 
 static void dump_statistics(struct statistics *s) {
-	printf("%llu %.0f %.0f %.0f %llu %.0f %llu %.0f %llu %llu\n",
+	printf("%llu %.0f %.0f %.0f %llu %.0f %llu %.0f %llu %llu %llu %llu\n",
 	       s->valid, s->sum, s->iops, s->speed,
 	       s->min, s->avg, s->max, s->mdev,
-	       s->count, s->load_time);
+	       s->count, s->load_time, s->read_fail, s->write_fail);
 }
 
 static void json_request(long long io_size, long long io_time, int valid)
@@ -1461,7 +1465,8 @@ static void json_request(long long io_size, long long io_time, int valid)
 	       "    \"operation\": \"%s\",\n"
 	       "    \"size\": %lld,\n"
 	       "    \"time\": %llu,\n"
-	       "    \"ignored\": %s\n"
+	       "    \"ignored\": %s,\n"
+	       "    \"failed\": %s\n"
 	       "  }\n"
 	       "}",
 	       json_line++ ? "," : "",
@@ -1475,7 +1480,8 @@ static void json_request(long long io_size, long long io_time, int valid)
 	       write_test ? "write" : "read",
 	       io_size,
 	       io_time,
-	       valid ? "false" : "true");
+	       valid ? "false" : "true",
+		   (io_size == 0) ? "true" : "false");
 }
 
 static void json_statistics(struct statistics *s)
@@ -1493,6 +1499,8 @@ static void json_statistics(struct statistics *s)
 	       "  },\n"
 	       "  \"stat\": {\n"
 	       "    \"count\": %llu,\n"
+	       "    \"read_fail\": %llu,\n"
+	       "    \"write_fail\": %llu,\n"
 	       "    \"size\": %llu,\n"
 	       "    \"time\": %.0f,\n"
 	       "    \"iops\": %f,\n"
@@ -1518,6 +1526,8 @@ static void json_statistics(struct statistics *s)
 	       device,
 	       device_size,
 	       s->valid,
+		   s->read_fail,
+		   s->write_fail,
 	       s->size,
 	       s->sum,
 	       s->iops,
@@ -1776,8 +1786,11 @@ skip_preparation:
 		if (ret_size < 0) {
 			if (nowait && errno == EAGAIN)
 				ret_size = 0;
-			else if (errno != EINTR)
-				err(3, "request failed");
+			else if (errno != EINTR){
+				warnx("%s request failed", write_test ? "write" : "read");
+				ret_size = 0;
+				write_test ? part.write_fail++ : part.read_fail++;
+			}
 		} else {
 			if (ret_size < size)
 				warnx("request returned less than expected: %zu", ret_size);
