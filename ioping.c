@@ -1922,6 +1922,16 @@ skip_preparation:
 		print_int(total.too_slow);
 		printf(" too slow, ");
 	}
+	if (total.read_fail) {
+		print_int(total.read_fail);
+		printf(" read failed, ");
+	}
+	if (total.write_fail) {
+		print_int(total.write_fail);
+		printf(" write failed, ");
+	}
+	
+
 	printf("generated ");
 	print_int(total.count);
 	printf(" requests in ");
