@@ -84,6 +84,20 @@
 #  define RWF_NOWAIT	0x00000008
 # endif
 
+# ifndef RWF_HIPRI
+#  define RWF_HIPRI	0x00000001
+# endif
+
+#else /* __linux__ */
+
+# ifndef RWF_NOWAIT
+#  define RWF_NOWAIT	0
+# endif
+
+# ifndef RWF_HIPRI
+#  define RWF_HIPRI	0
+# endif
+
 #endif /* __linux__ */
 
 #ifdef __gnu_hurd__
@@ -533,7 +547,7 @@ int time_info = 0;
 int batch_mode = 0;
 int direct = 0;
 int cached = 0;
-int nowait = 0;
+int rw_flags = 0;
 int syncio = 0;
 int data_syncio = 0;
 int randomize = 1;
@@ -576,7 +590,7 @@ int json_line = 0;
 
 int exiting = 0;
 
-const char *options = "hvkALRDNCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Je:b:";
+const char *options = "hvkALRDNHCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Je:b:";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -596,6 +610,7 @@ static struct option long_options[] = {
 	{"direct",	no_argument,		NULL,	'D'},
 	{"cached",	no_argument,		NULL,	'C'},
 	{"nowait",	no_argument,		NULL,   'N'},
+	{"hipri",	no_argument,		NULL,   'H'},
 	{"sync",	no_argument,		NULL,	'Y'},
 	{"dsync",	no_argument,		NULL,	'y'},
 	{"async",	no_argument,		NULL,	'A'},
@@ -641,6 +656,7 @@ void usage(FILE *output)
 			"      -G, -read-write            read-write ping-pong mode\n"
 			"      -L, -linear                use sequential operations\n"
 			"      -N, -nowait                use nowait I/O (RWF_NOWAIT)\n"
+			"      -H, -hipri                 use high priority I/O (RWF_HIPRI)\n"
 			"      -W, -write                 use write I/O (please read manpage)\n"
 			"      -Y, -sync                  use sync I/O (O_SYNC)\n"
 			"      -y, -dsync                 use data sync I/O (O_DSYNC)\n"
@@ -731,7 +747,10 @@ void parse_options(int argc, char **argv)
 				cached = 1;
 				break;
 			case 'N':
-				nowait = 1;
+				rw_flags |= RWF_NOWAIT;
+				break;
+			case 'H':
+				rw_flags |= RWF_HIPRI;
 				break;
 			case 'A':
 				async = 1;
@@ -1019,12 +1038,8 @@ ssize_t do_preadv2(int fd, void *buf, size_t nbytes, off_t offset)
 		.iov_base = buf,
 		.iov_len = nbytes,
 	};
-	int flags = 0;
 
-	if (nowait)
-		flags |= RWF_NOWAIT;
-
-	return preadv2(fd, &iov, 1, offset, flags);
+	return preadv2(fd, &iov, 1, offset, rw_flags);
 }
 
 ssize_t do_pwritev2(int fd, void *buf, size_t nbytes, off_t offset)
@@ -1033,12 +1048,8 @@ ssize_t do_pwritev2(int fd, void *buf, size_t nbytes, off_t offset)
 		.iov_base = buf,
 		.iov_len = nbytes,
 	};
-	int flags = 0;
 
-	if (nowait)
-		flags |= RWF_NOWAIT;
-
-	return pwritev2(fd, &iov, 1, offset, flags);
+	return pwritev2(fd, &iov, 1, offset, rw_flags);
 }
 
 #endif /* HAVE_LINUX_PREADV2 */
@@ -1081,10 +1092,7 @@ static ssize_t aio_pread(int fd, void *buf, size_t nbytes, off_t offset)
 	aio_cb.aio_buf = (intptr_t)buf;
 	aio_cb.aio_nbytes = nbytes;
 	aio_cb.aio_offset = offset;
-	aio_cb.aio_rw_flags = 0;
-
-	if (nowait)
-		aio_cb.aio_rw_flags |= RWF_NOWAIT;
+	aio_cb.aio_rw_flags = rw_flags;
 
 	if (io_submit(aio_ctx, 1, &aio_cbp) != 1)
 		err(1, "aio submit failed");
@@ -1107,10 +1115,7 @@ static ssize_t aio_pwrite(int fd, void *buf, size_t nbytes, off_t offset)
 	aio_cb.aio_buf = (intptr_t)buf;
 	aio_cb.aio_nbytes = nbytes;
 	aio_cb.aio_offset = offset;
-	aio_cb.aio_rw_flags = 0;
-
-	if (nowait)
-		aio_cb.aio_rw_flags |= RWF_NOWAIT;
+	aio_cb.aio_rw_flags = rw_flags;
 
 	if (io_submit(aio_ctx, 1, &aio_cbp) != 1)
 		err(1, "aio submit failed");
@@ -1597,16 +1602,16 @@ int main (int argc, char **argv)
 
 	if (async) {
 		aio_setup();
-	} else if (nowait) {
+	} else if (rw_flags) {
 #ifdef HAVE_LINUX_PREADV2
 		make_pread = do_preadv2;
 		make_pwrite = do_pwritev2;
 #else
-		warnx("nowait I/O is not supported");
+		warnx("nowait/hipri I/O is not supported");
 #endif
 	}
 
-	if (nowait && !cached && !direct)
+	if ((rw_flags & RWF_NOWAIT) && !cached && !direct)
 		warnx("nowait without cached or direct I/O is supposed to fail");
 
 	make_request = write_test ? make_pwrite : make_pread;
@@ -1774,9 +1779,10 @@ skip_preparation:
 		ret_size = make_request(target_fd, buf, size, offset + woffset);
 
 		if (ret_size < 0) {
-			if (nowait && errno == EAGAIN)
+			if ((rw_flags & RWF_NOWAIT) && errno == EAGAIN) {
+				notice = "EAGAIN";
 				ret_size = 0;
-			else if (errno != EINTR)
+			} else if (errno != EINTR)
 				err(3, "request failed");
 		} else {
 			if (ret_size < size)
@@ -1802,7 +1808,7 @@ skip_preparation:
 
 		timestamp_uptodate = 0;
 
-		valid = add_statistics(&part, this_time);
+		valid = ret_size ? add_statistics(&part, this_time) : false;
 
 		if (quiet) {
 			/* silence */
