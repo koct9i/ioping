@@ -1,4 +1,5 @@
-PREFIX=/usr/local
+prefix=/usr/local
+PREFIX=$(prefix)
 BINDIR=$(PREFIX)/bin
 MAN1DIR=$(PREFIX)/share/man/man1
 
@@ -24,6 +25,10 @@ CFLAGS		?= -g -O2 -funroll-loops -ftree-vectorize
 CFLAGS		+= -std=gnu99 -Wall -Wextra -pedantic
 CPPFLAGS	= -DEXTRA_VERSION=\"${EXTRA_VERSION}\"
 
+ifneq (,$(STATIC))
+CFLAGS		+= -static
+endif
+
 LIBS		= -lm -lrt
 
 MINGW		= x86_64-w64-mingw32-
@@ -46,6 +51,9 @@ ${BINARY}: ucrt-spec
 endif
 
 all: checkver $(BINARY)
+
+static:
+	$(MAKE) STATIC=1
 
 version: checkver
 	@echo ${VERSION}
