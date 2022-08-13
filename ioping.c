@@ -55,7 +55,6 @@
 
 #ifdef __linux__
 # include <sys/ioctl.h>
-# include <sys/mount.h>
 # include <sys/sysmacros.h>
 # include <sys/syscall.h>
 # define HAVE_CLOCK_GETTIME
@@ -68,13 +67,14 @@
 # define HAVE_STATVFS
 # define MAX_RW_COUNT		0x7ffff000 /* 2G - 4K */
 
-#undef RWF_NOWAIT
+# undef RWF_NOWAIT
+# include <linux/fs.h>
 # include <linux/aio_abi.h>
 # ifndef RWF_NOWAIT
 #  define aio_rw_flags aio_reserved1
 # endif
-#undef RWF_NOWAIT
 
+# undef RWF_NOWAIT
 # include <sys/uio.h>
 # ifdef RWF_NOWAIT
 #  define HAVE_LINUX_PREADV2
