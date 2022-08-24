@@ -1,4 +1,31 @@
 
+v1.3 / 2022-08-24
+==================
+
+  * Workaround for glibc 2.36 sys/mount.h
+  * ioping: add RWF_HIPRI
+  * ioping: add "make static"
+  * ioping: print notice "slow"/"fast" when twice slower/faster than average
+  * ioping: cleanup timing notice
+  * ioping: fix mingw build
+  * ioping: add option -burst
+  * ioping: include stdbool
+  * ioping: restore CPPFLAGS in makefile
+  * ioping: use 64-bit printf format
+  * ioping: switch mingw build to 64-bit and ucrt
+  * ioping: retrive device size and name for windows
+  * ioping: use F_FULLFSYNC for OSX
+  * ioping: move fdatasync after write out of make_request()
+  * ioping: implement O_SYNC for windows by FILE_FLAG_WRITE_THROUGH
+  * ioping: fallback from non-cached to direct only for reads
+  * ioping: rename global target fd variable
+  * ioping: add option -e, -entropy for deterministic randomization
+  * ioping: add support nowait I/O (RWF_NOWAIT)
+  * ioping: print help and version into stdout
+  * ioping: add option -I|-time to print current time
+  * ioping: describe json format in manpage
+  * ioping: add human-readable localtime into json output
+
 v1.2 / 2020-02-02
 ==================
 
