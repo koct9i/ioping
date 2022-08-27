@@ -1563,6 +1563,8 @@ int main (int argc, char **argv)
 	if (speed_limit) {
 		long long i = size * NSEC_PER_SEC / speed_limit;
 
+		if (burst)
+			i *= burst;
 		if (i > interval)
 			interval = i;
 	}
@@ -1570,6 +1572,8 @@ int main (int argc, char **argv)
 	if (rate_limit) {
 		long long i = NSEC_PER_SEC / rate_limit;
 
+		if (burst)
+			i *= burst;
 		if (i > interval)
 			interval = i;
 	}

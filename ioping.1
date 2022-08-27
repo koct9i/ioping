@@ -37,7 +37,7 @@ Ignore in statistics first \fIcount\fR requests, default 1.
 First request usually is much slower due to power-saving features.
 .TP
 \fB\-b\fR, \fB\-burst\fR \fIcount\fR
-Make series of \fIcount\fR requests without delay, default \fB0\fR.
+Make series of \fIcount\fR requests without delay, default \fB0\fR (off).
 Aggressive power-saving features slow down requests even after short delay.
 .TP
 \fB\-c\fR, \fB\-count\fR \fIcount\fR
@@ -50,10 +50,12 @@ Set seed for random number generator, default \fB0\fR (random).
 Set \fItime\fR between requests, default \fB1s\fR.
 .TP
 \fB\-l\fR, \fB\-speed-limit\fR \fIsize\fR
-Set speed limit in \fIsize\fR per second. Increases interval to request-size / speed.
+Limit generated load with \fIsize\fR per second.
+Increases interval to request-size * burst / speed-limit.
 .TP
 \fB\-r\fR, \fB\-rate-limit\fR \fIcount\fR
-Set rate limit in \fIcount\fR per second. Increases interval to 1 / rate.
+Limit generated load with \fIcount\fR IOPS.
+Increases interval to burst / rate.
 .TP
 \fB\-t\fR, \fB\-min\-time\fR \fItime\fR
 Minimal valid request time (\fB0us\fR).
