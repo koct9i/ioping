@@ -112,6 +112,9 @@ size to \fB256k\fR (as in \fB-size 256k\fR).
 Set RWF_NOWAIT on I/O, indicating to the kernel to do not wait if request
 cannot be executed immediately. (see \fBRWF_NOWAIT\fR in \fBpreadv2\fR(2))
 .TP
+\fB\-H\fR, \fB\-hipri\fR
+Set RWF_HIPRI on I/O. (see \fBpreadv2\fR(2))
+.TP
 \fB\-R\fR, \fB\-rapid\fR
 Disk seek rate test, or bandwidth test if used together with \fB-linear\fR.
 
