@@ -1464,6 +1464,7 @@ static void json_request(long long io_size, long long io_time, int valid)
 	       "  \"io\": {\n"
 	       "    \"request\": %lld,\n"
 	       "    \"operation\": \"%s\",\n"
+	       "    \"offset\": %lld,\n"
 	       "    \"size\": %lld,\n"
 	       "    \"time\": %llu,\n"
 	       "    \"ignored\": %s\n"
@@ -1478,6 +1479,7 @@ static void json_request(long long io_size, long long io_time, int valid)
 	       device_size,
 	       request,
 	       write_test ? "write" : "read",
+	       (long long)offset + woffset,
 	       io_size,
 	       io_time,
 	       valid ? "false" : "true");
