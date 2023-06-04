@@ -74,6 +74,10 @@
 #  define aio_rw_flags aio_reserved1
 # endif
 
+#if defined(__GLIBC_PREREQ) && __GLIBC_PREREQ(2, 32)
+# define HAVE_ERR_NAME
+#endif
+
 # undef RWF_NOWAIT
 # include <sys/uio.h>
 # ifdef RWF_NOWAIT
@@ -225,6 +229,51 @@ void warnx(const char *fmt, ...)
 }
 
 #endif /* HAVE_ERR_INCLUDE */
+
+static const char *errno_name(void)
+{
+#ifdef HAVE_ERR_NAME
+	return strerrorname_np(errno);
+#else
+	static char buf[16];
+	switch (errno) {
+	case ENOENT:
+		return "ENOENT";
+	case ENOSYS:
+		return "ENOSYS";
+	case ENOMEM:
+		return "ENOMEM";
+	case ENODEV:
+		return "ENODEV";
+	case EAGAIN:
+		return "EAGAIN";
+	case EINTR:
+		return "EINTR";
+	case EIO:
+		return "EIO";
+	case EPIPE:
+		return "EPIPE";
+	case EBUSY:
+		return "EBUSY";
+	case EROFS:
+		return "EROFS";
+	case ENOSPC:
+		return "ENOSPC";
+	case EFBIG:
+		return "EFBIG";
+	case EPERM:
+		return "EPERM";
+	case EACCES:
+		return "EACCES";
+# ifdef EDQUOT
+	case EDQUOT:
+		return "EDQUOT";
+# endif
+	}
+	snprintf(buf, sizeof(buf), "errno=%d", errno);
+	return buf;
+#endif
+}
 
 #define NSEC_PER_SEC	1000000000ll
 #define USEC_PER_SEC	1000000L
@@ -553,6 +602,7 @@ int data_syncio = 0;
 int randomize = 1;
 int write_test = 0;
 int write_read_test = 0;
+int ignore_error = 0;
 
 unsigned long long random_entropy = 0;
 
@@ -590,7 +640,7 @@ int json_line = 0;
 
 int exiting = 0;
 
-const char *options = "hvkALRDNHCWGYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Je:b:";
+const char *options = "hvkALRDNHCWGEYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Je:b:";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -616,6 +666,7 @@ static struct option long_options[] = {
 	{"async",	no_argument,		NULL,	'A'},
 	{"write",	no_argument,		NULL,	'W'},
 	{"read-write",	no_argument,		NULL,	'G'},
+	{"ignore-error",no_argument,		NULL,	'E'},
 
 	{"size",	required_argument,	NULL,	's'},
 	{"work-size",	required_argument,	NULL,	'S'},
@@ -653,6 +704,7 @@ void usage(FILE *output)
 			"      -A, -async                 use asynchronous I/O\n"
 			"      -C, -cached                use cached I/O (no cache flush/drop)\n"
 			"      -D, -direct                use direct I/O (O_DIRECT)\n"
+			"      -E  -ignore-error          continue after request failure\n"
 			"      -G, -read-write            read-write ping-pong mode\n"
 			"      -L, -linear                use sequential operations\n"
 			"      -N, -nowait                use nowait I/O (RWF_NOWAIT)\n"
@@ -761,6 +813,9 @@ void parse_options(int argc, char **argv)
 			case 'G':
 				write_test++;
 				write_read_test = 1;
+				break;
+			case 'E':
+				ignore_error = 1;
 				break;
 			case 'Y':
 				syncio = 1;
@@ -1354,7 +1409,7 @@ static void random_memory(void *buf, size_t len)
 
 struct statistics {
 	long long start, finish, load_time;
-	long long count, valid, too_slow, too_fast;
+	long long count, valid, too_slow, too_fast, failed;
 	long long min, max;
 	double sum, sum2, avg, mdev;
 	double speed, iops, load_speed, load_iops;
@@ -1368,9 +1423,11 @@ static void start_statistics(struct statistics *s, unsigned long long start) {
 	s->start = start;
 }
 
-static int add_statistics(struct statistics *s, long long val) {
+static int add_statistics(struct statistics *s, ssize_t ret, long long val) {
 	s->count++;
-	if (request <= warmup_request) {
+	if (ret <= 0) {
+		s->failed++;
+	} else if (request <= warmup_request) {
 		notice = "warmup";
 	} else if (val < min_valid_time) {
 		notice = "too fast";
@@ -1406,6 +1463,7 @@ static void merge_statistics(struct statistics *s, struct statistics *o) {
 	s->count += o->count;
 	s->too_fast += o->too_fast;
 	s->too_slow += o->too_slow;
+	s->failed += o->failed;
 	if (o->valid) {
 		s->valid += o->valid;
 		s->sum += o->sum;
@@ -1467,7 +1525,8 @@ static void json_request(long long io_size, long long io_time, int valid)
 	       "    \"offset\": %lld,\n"
 	       "    \"size\": %lld,\n"
 	       "    \"time\": %llu,\n"
-	       "    \"ignored\": %s\n"
+	       "    \"ignored\": %s,\n"
+	       "    \"notice\": \"%s\"\n"
 	       "  }\n"
 	       "}",
 	       json_line++ ? "," : "",
@@ -1482,7 +1541,8 @@ static void json_request(long long io_size, long long io_time, int valid)
 	       (long long)offset + woffset,
 	       io_size,
 	       io_time,
-	       valid ? "false" : "true");
+	       valid ? "false" : "true",
+	       notice ? notice : "");
 }
 
 static void json_statistics(struct statistics *s)
@@ -1511,6 +1571,7 @@ static void json_statistics(struct statistics *s)
 	       "  },\n"
 	       "  \"load\": {\n"
 	       "    \"count\": %llu,\n"
+	       "    \"failed\": %llu,\n"
 	       "    \"size\": %llu,\n"
 	       "    \"time\": %llu,\n"
 	       "    \"iops\": %f,\n"
@@ -1534,6 +1595,7 @@ static void json_statistics(struct statistics *s)
 	       s->max,
 	       s->mdev,
 	       s->count,
+	       s->failed,
 	       s->load_size,
 	       s->load_time,
 	       s->load_iops,
@@ -1785,11 +1847,11 @@ skip_preparation:
 		ret_size = make_request(target_fd, buf, size, offset + woffset);
 
 		if (ret_size < 0) {
-			if ((rw_flags & RWF_NOWAIT) && errno == EAGAIN) {
-				notice = "EAGAIN";
+			if (ignore_error || errno == EINTR || ((rw_flags & RWF_NOWAIT) && errno == EAGAIN)) {
 				ret_size = 0;
-			} else if (errno != EINTR)
-				err(3, "request failed");
+				notice = errno_name();
+			} else
+				err(3, "request failed: %s", errno_name());
 		} else {
 			if (ret_size < size)
 				warnx("request returned less than expected: %zu", ret_size);
@@ -1814,7 +1876,7 @@ skip_preparation:
 
 		timestamp_uptodate = 0;
 
-		valid = ret_size ? add_statistics(&part, this_time) : false;
+		valid = add_statistics(&part, ret_size, this_time);
 
 		if (quiet) {
 			/* silence */

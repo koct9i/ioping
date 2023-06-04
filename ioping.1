@@ -3,7 +3,7 @@
 ioping \- simple disk I/O latency monitoring tool
 .SH SYNOPSYS
 .SY ioping
-.OP \-ABCDJLNRWGYykq
+.OP \-ABCDEJLNRWGYykq
 .OP \-a count
 .OP \-b count
 .OP \-c count
@@ -95,6 +95,9 @@ read and \fBfdatasync\fR(2) after each write.
 .TP
 \fB\-D\fR, \fB\-direct\fR
 Use direct I/O (see \fBO_DIRECT\fR in \fBopen\fR(2)).
+.TP
+\fB\-E\fR, \fB\-ignore-error\fR
+Continue after request failure.
 .TP
 \fB\-I\fR, \fB\-time\fR \fI[format]\fR
 Print current time for each request.
@@ -302,6 +305,7 @@ With option -J|--json ioping prints json array of objects:
   // load statistics
   "load": {
     "count": (nr requests),
+    "failed": (nr failed requests),
     "size": (total io size in bytes),
     "time": (total real time in ns),
     "iops": (avg iops),
