@@ -26,7 +26,7 @@ Packages
 
 * Debian: https://packages.debian.org/unstable/main/ioping
 * Ubuntu: https://launchpad.net/ubuntu/+source/ioping
-* Fedora: https://apps.fedoraproject.org/packages/ioping
+* Fedora: https://packages.fedoraproject.org/pkgs/ioping/ioping
 * ArchLinux: https://www.archlinux.org/packages/community/x86_64/ioping
 * AltLinux: http://www.sisyphus.ru/en/srpm/Sisyphus/ioping
 * Gentoo: https://packages.gentoo.org/package/app-benchmarks/ioping
