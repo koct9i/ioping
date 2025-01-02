@@ -1,7 +1,0 @@
-os:
-  - linux
-  - osx
-
-script:
-  - make
-  - make test
