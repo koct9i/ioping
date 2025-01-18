@@ -15,14 +15,10 @@ jobs:
           - os: ubuntu-latest
 
           - os: ubuntu-latest
-            image: ubuntu:20.04
-          - os: ubuntu-latest
             image: ubuntu:22.04
           - os: ubuntu-latest
             image: ubuntu:24.04
 
-          - os: ubuntu-latest
-            image: fedora:40
           - os: ubuntu-latest
             image: fedora:41
           - os: ubuntu-latest
@@ -32,6 +28,23 @@ jobs:
             image: debian:11
           - os: ubuntu-latest
             image: debian:12
+
+          - os: ubuntu-24.04-arm
+
+          # - os: ubuntu-24.04-arm
+          #  image: ubuntu:22.04
+          - os: ubuntu-24.04-arm
+            image: ubuntu:24.04
+
+          - os: ubuntu-24.04-arm
+            image: debian:11
+          - os: ubuntu-24.04-arm
+            image: debian:12
+
+          - os: ubuntu-24.04-arm
+            image: fedora:41
+          - os: ubuntu-24.04-arm
+            image: fedora:42
 
           - os: macos-13
           - os: macos-14
