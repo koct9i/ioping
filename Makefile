@@ -114,4 +114,7 @@ binary-zip: checkver $(PACKFILES)
 	zip ${PACKAGE}-${VERSION}-${TARGET}.zip $(addprefix $(DISTDIR)/,$^)
 	rm $(DISTDIR)
 
+docker-build-alpine docker-build-debian docker-build-fedora docker-build-ubuntu:
+	docker build --target ${@:docker-build-%=%}-bin . -o bin/${@:docker-build-%=%}
+
 .PHONY: all version checkver clean strip test install dist binary-tgz binary-zip
