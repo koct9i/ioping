@@ -29,6 +29,9 @@ jobs:
           - os: ubuntu-latest
             image: debian:12
 
+          - os: ubuntu-latest
+            image: alpine:3
+
           - os: ubuntu-24.04-arm
 
           # - os: ubuntu-24.04-arm
@@ -46,6 +49,9 @@ jobs:
           - os: ubuntu-24.04-arm
             image: fedora:42
 
+          # - os: ubuntu-24.04-arm
+          #   image: alpine:3
+
           - os: macos-13
           - os: macos-14
           - os: macos-15
@@ -62,6 +68,11 @@ jobs:
       # https://github.com/actions/checkout
       - name: Checkout repo
         uses: actions/checkout@v4
+
+      - name: Dependencies (alpine)
+        if: ${{ startsWith(matrix.build.image, 'alpine') }}
+        run: |
+          apk --no-cache add make gcc musl-dev linux-headers
 
       - name: Dependencies (ubuntu, debian)
         if: ${{ startsWith(matrix.build.image, 'ubuntu') || startsWith(matrix.build.image, 'debian') }}

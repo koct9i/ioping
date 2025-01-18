@@ -59,6 +59,7 @@
 # include <sys/syscall.h>
 # define HAVE_CLOCK_GETTIME
 # define HAVE_POSIX_FADVICE
+# define HAVE_POSIX_FDATASYNC
 # define HAVE_POSIX_MEMALIGN
 # define HAVE_MKOSTEMP
 # define HAVE_DIRECT_IO
@@ -74,9 +75,11 @@
 #  define aio_rw_flags aio_reserved1
 # endif
 
-#if defined(__GLIBC_PREREQ) && __GLIBC_PREREQ(2, 32)
-# define HAVE_ERR_NAME
-#endif
+# ifdef __GLIBC_PREREQ
+#  if __GLIBC_PREREQ(2, 32)
+#   define HAVE_ERR_NAME
+#  endif
+# endif
 
 # undef RWF_NOWAIT
 # include <sys/uio.h>
@@ -174,8 +177,10 @@
 # define HAVE_MKOSTEMP /* not required */
 #endif
 
-#if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
-# define HAVE_POSIX_FDATASYNC
+#ifndef HAVE_POSIX_FDATASYNC
+# if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
+#  define HAVE_POSIX_FDATASYNC
+# endif
 #endif
 
 #ifdef O_SYNC
@@ -1011,7 +1016,7 @@ int get_device_size(int fd, struct stat *st)
 
 #if defined(BLKGETSIZE64)
 	/* linux */
-	ret = ioctl(fd, BLKGETSIZE64, &blksize);
+	ret = ioctl(fd, (unsigned int)BLKGETSIZE64, &blksize);
 #elif defined(DIOCGMEDIASIZE)
 	/* freebsd */
 	ret = ioctl(fd, DIOCGMEDIASIZE, &blksize);
