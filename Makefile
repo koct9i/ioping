@@ -22,7 +22,7 @@ DISTFILES=$(SRCS) $(MANS) $(DOCS) $(SPEC) Makefile
 PACKFILES=$(BINARY) $(MANS) $(MANS_F) $(DOCS)
 
 CFLAGS		?= -g -O2 -funroll-loops -ftree-vectorize
-CFLAGS		+= -std=gnu99 -Wall -Wextra -pedantic
+CFLAGS		+= -std=gnu11 -Wall -Wextra -pedantic
 CPPFLAGS	= -DEXTRA_VERSION=\"${EXTRA_VERSION}\"
 
 ifneq (,$(STATIC))

@@ -38,6 +38,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdatomic.h>
 #include <getopt.h>
 #include <string.h>
 #include <unistd.h>
@@ -57,6 +59,7 @@
 # include <sys/ioctl.h>
 # include <sys/sysmacros.h>
 # include <sys/syscall.h>
+# include <sys/mman.h>
 # define HAVE_CLOCK_GETTIME
 # define HAVE_POSIX_FADVICE
 # define HAVE_POSIX_FDATASYNC
@@ -93,6 +96,14 @@
 
 # ifndef RWF_HIPRI
 #  define RWF_HIPRI	0x00000001
+# endif
+
+# ifdef __NR_io_uring_setup
+#  define HAVE_LINUX_IO_URING
+# endif
+
+# ifdef HAVE_LINUX_IO_URING
+#  include <linux/io_uring.h>
 # endif
 
 #else /* __linux__ */
@@ -599,6 +610,7 @@ const char *notice = NULL;
 int quiet = 0;
 int time_info = 0;
 int batch_mode = 0;
+int async_uring = 0;
 int direct = 0;
 int cached = 0;
 int rw_flags = 0;
@@ -645,7 +657,7 @@ int json_line = 0;
 
 int exiting = 0;
 
-const char *options = "hvkALRDNHCWGEYBqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Je:b:";
+const char *options = "hvkALRDNHCWGEYBUqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Je:b:";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
@@ -669,6 +681,7 @@ static struct option long_options[] = {
 	{"sync",	no_argument,		NULL,	'Y'},
 	{"dsync",	no_argument,		NULL,	'y'},
 	{"async",	no_argument,		NULL,	'A'},
+	{"uring",	no_argument,		NULL,	'U'},
 	{"write",	no_argument,		NULL,	'W'},
 	{"read-write",	no_argument,		NULL,	'G'},
 	{"ignore-error",no_argument,		NULL,	'E'},
@@ -714,6 +727,7 @@ void usage(FILE *output)
 			"      -L, -linear                use sequential operations\n"
 			"      -N, -nowait                use nowait I/O (RWF_NOWAIT)\n"
 			"      -H, -hipri                 use high priority I/O (RWF_HIPRI)\n"
+			"      -U, -uring		  use asynchronous I/O uring\n"
 			"      -W, -write                 use write I/O (please read manpage)\n"
 			"      -Y, -sync                  use sync I/O (O_SYNC)\n"
 			"      -y, -dsync                 use data sync I/O (O_DSYNC)\n"
@@ -811,6 +825,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'A':
 				async = 1;
+				break;
+			case 'U':
+				async_uring = 1;
 				break;
 			case 'W':
 				write_test++;
@@ -1213,6 +1230,128 @@ static void aio_setup(void)
 }
 
 #endif /* HAVE_LINUX_ASYNC_IO */
+
+#ifdef HAVE_LINUX_IO_URING
+
+int io_uring_setup(unsigned entries, struct io_uring_params *params) {
+	return (int)syscall(__NR_io_uring_setup, entries, params);
+}
+
+int io_uring_enter(int ring_fd, unsigned int to_submit, unsigned int min_complete, unsigned int flags) {
+	return (int)syscall(__NR_io_uring_enter, ring_fd, to_submit, min_complete, flags, NULL, 0);
+}
+
+#define uring_add_offset(b, o) \
+	(void *)((char *)(b) + (o))
+
+#define uring_store_release(p, v) \
+	atomic_store_explicit((p), (v), memory_order_release)
+
+#define uring_load_acquire(p) \
+	atomic_load_explicit((p), memory_order_acquire)
+
+#define uring_load_relaxed(p) \
+	atomic_load_explicit((p), memory_order_relaxed)
+
+#define URING_QUEUE_DEPTH 1
+
+int uring_fd;
+
+struct io_uring_sqe *uring_sqes;
+struct io_uring_cqe *uring_cqes;
+
+unsigned *uring_sq_array;
+unsigned *uring_sq_mask;
+atomic_uint *uring_sq_tail;
+
+unsigned *uring_cq_mask;
+atomic_uint *uring_cq_head;
+atomic_uint *uring_cq_tail;
+
+static inline void uring_sq_submit(int op, int fd, void *buf, size_t nbytes, off_t offset) {
+	unsigned tail = uring_load_relaxed(uring_sq_tail);
+	unsigned index = tail & *uring_sq_mask;
+	struct io_uring_sqe *sqe = &uring_sqes[index];
+
+	sqe->opcode = op;
+	sqe->fd = fd;
+	sqe->off = offset;
+	sqe->addr = (unsigned long)buf;
+	sqe->len = nbytes;
+	sqe->rw_flags = rw_flags;
+
+	uring_sq_array[index] = index;
+	tail++;
+	uring_store_release(uring_sq_tail, tail);
+}
+
+static inline int uring_cq_receive(void) {
+	unsigned head = uring_load_acquire(uring_cq_head);
+	if (head == uring_load_relaxed(uring_cq_tail))
+		errx(3, "uring cq empty");
+	unsigned index = head & *uring_cq_mask;
+	struct io_uring_cqe *cqe = &uring_cqes[index];
+	int result = cqe->res;
+	head++;
+	uring_store_release(uring_cq_head, head);
+	return result;
+}
+
+static ssize_t uring_pread(int fd, void *buf, size_t nbytes, off_t offset) {
+	uring_sq_submit(IORING_OP_READ, fd, buf, nbytes, offset);
+	if(io_uring_enter(uring_fd, 1, 1, IORING_ENTER_GETEVENTS) < 0)
+		err(3, "io_uring_enter");
+	return uring_cq_receive();
+}
+
+static ssize_t uring_pwrite(int fd, void *buf, size_t nbytes, off_t offset) {
+	uring_sq_submit(IORING_OP_WRITE, fd, buf, nbytes, offset);
+	if(io_uring_enter(uring_fd, 1, 1, IORING_ENTER_GETEVENTS) < 0)
+		err(3, "io_uring_enter");
+	return uring_cq_receive();
+}
+
+void uring_setup(void) {
+	struct io_uring_params params;
+	void *sq_ptr, *cq_ptr;
+
+	memset(&params, 0, sizeof(params));
+	uring_fd = io_uring_setup(URING_QUEUE_DEPTH, &params);
+	if (uring_fd < 0)
+		err(2, "io_uring_setup");
+
+	int sq_size = params.sq_off.array + params.sq_entries * sizeof(unsigned);
+	int cq_size = params.cq_off.cqes + params.cq_entries * sizeof(struct io_uring_cqe);
+	int sqes_size = params.sq_entries * sizeof(struct io_uring_sqe);
+
+	sq_ptr = mmap(0, sq_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, uring_fd, IORING_OFF_SQ_RING);
+	cq_ptr = mmap(0, cq_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, uring_fd, IORING_OFF_CQ_RING);
+	uring_sqes = mmap(0, sqes_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, uring_fd, IORING_OFF_SQES);
+	if (sq_ptr == MAP_FAILED || cq_ptr == MAP_FAILED || uring_sqes == MAP_FAILED)
+		err(2, "io_uring mmap");
+
+	uring_sq_array = uring_add_offset(sq_ptr, params.sq_off.array);
+	uring_sq_tail = uring_add_offset(sq_ptr, params.sq_off.tail);
+	uring_sq_mask = uring_add_offset(sq_ptr, params.sq_off.ring_mask);
+
+	uring_cq_head = uring_add_offset(cq_ptr, params.cq_off.head);
+	uring_cq_tail = uring_add_offset(cq_ptr, params.cq_off.tail);
+	uring_cq_mask = uring_add_offset(cq_ptr, params.cq_off.ring_mask);
+
+	uring_cqes = uring_add_offset(cq_ptr, params.cq_off.cqes);
+
+	make_pread = uring_pread;
+	make_pwrite = uring_pwrite;
+}
+
+#else /* HAVE_LINUX_IO_URING */
+
+static void uring_setup(void)
+{
+	errx(1, "asynchronous I/O uring is not supported");
+}
+
+#endif /* HAVE_LINUX_IO_URING */
 
 #ifdef __MINGW32__
 
@@ -1672,8 +1811,9 @@ int main (int argc, char **argv)
 # endif
 	}
 #endif
-
-	if (async) {
+	if (async_uring) {
+		uring_setup();
+	} else if (async) {
 		aio_setup();
 	} else if (rw_flags) {
 #ifdef HAVE_LINUX_PREADV2
