@@ -28,7 +28,7 @@ Packages
 * Ubuntu: https://launchpad.net/ubuntu/+source/ioping
 * Fedora: https://packages.fedoraproject.org/pkgs/ioping/ioping
 * ArchLinux: https://www.archlinux.org/packages/community/x86_64/ioping
-* AltLinux: http://www.sisyphus.ru/en/srpm/Sisyphus/ioping
+* ALT Linux: https://packages.altlinux.org/ru/sisyphus/srpms/ioping/
 * Gentoo: https://packages.gentoo.org/package/app-benchmarks/ioping
 * Nix: https://github.com/NixOS/nixpkgs/blob/master/pkgs/tools/system/ioping/default.nix
 * FreeBSD: http://www.freshports.org/sysutils/ioping
