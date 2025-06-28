@@ -24,15 +24,15 @@ Supported OS
 Packages
 --------
 
-* Debian: https://packages.debian.org/unstable/main/ioping
+* Debian: https://tracker.debian.org/pkg/ioping
 * Ubuntu: https://launchpad.net/ubuntu/+source/ioping
 * Fedora: https://packages.fedoraproject.org/pkgs/ioping/ioping
-* ArchLinux: https://www.archlinux.org/packages/community/x86_64/ioping
+* ArchLinux: https://archlinux.org/packages/extra/x86_64/ioping
 * ALT Linux: https://packages.altlinux.org/ru/sisyphus/srpms/ioping/
 * Gentoo: https://packages.gentoo.org/package/app-benchmarks/ioping
-* Nix: https://github.com/NixOS/nixpkgs/blob/master/pkgs/tools/system/ioping/default.nix
+* Nix: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/io/ioping/package.nix
 * FreeBSD: http://www.freshports.org/sysutils/ioping
-* OS X: https://github.com/Homebrew/homebrew/blob/master/Library/Formula/ioping.rb
+* OS X: https://github.com/Homebrew/homebrew-core/blob/main/Formula/i/ioping.rb
 
 Examples
 --------
