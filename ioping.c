@@ -657,57 +657,49 @@ int json_line = 0;
 
 int exiting = 0;
 
-const char *options = "hvkALRDNHCWGEYBUqyi:t:T:w:s:S:c:o:p:P:l:r:a:I::Je:b:";
+// short options in alphabetical order
+const char *options = "Aa:Bb:Cc:DEe:GHhI::i:JkLl:No:P:p:qRr:S:s:T:t:UvWw:Yy";
 
 #ifdef HAVE_GETOPT_LONG_ONLY
 
+// long options in alphabetical order
 static struct option long_options[] = {
-	{"help",	no_argument,		NULL,	'h'},
-	{"version",	no_argument,		NULL,	'v'},
-
-	{"keep",	no_argument,		NULL,	'k'},
-
-	{"quiet",	no_argument,		NULL,	'q'},
-	{"batch",	no_argument,		NULL,	'B'},
-	{"time",	optional_argument,	NULL,   'I'},
-	{"json",	no_argument,		NULL,	'J'},
-
-	{"rapid",	no_argument,		NULL,	'R'},
-	{"linear",	no_argument,		NULL,	'L'},
-	{"direct",	no_argument,		NULL,	'D'},
-	{"cached",	no_argument,		NULL,	'C'},
-	{"nowait",	no_argument,		NULL,   'N'},
-	{"hipri",	no_argument,		NULL,   'H'},
-	{"sync",	no_argument,		NULL,	'Y'},
-	{"dsync",	no_argument,		NULL,	'y'},
-	{"async",	no_argument,		NULL,	'A'},
-	{"uring",	no_argument,		NULL,	'U'},
-	{"write",	no_argument,		NULL,	'W'},
-	{"read-write",	no_argument,		NULL,	'G'},
+	{"async",		no_argument,		NULL,	'A'},
+	{"batch",		no_argument,		NULL,	'B'},
+	{"burst",		required_argument,	NULL,	'b'},
+	{"cached",		no_argument,		NULL,	'C'},
+	{"count",		required_argument,	NULL,	'c'},
+	{"direct",		no_argument,		NULL,	'D'},
+	{"dsync",		no_argument,		NULL,	'y'},
+	{"entropy",		required_argument,	NULL,	'e'},
+	{"help",		no_argument,		NULL,	'h'},
+	{"hipri",		no_argument,		NULL,   'H'},
 	{"ignore-error",no_argument,		NULL,	'E'},
-
-	{"size",	required_argument,	NULL,	's'},
-	{"work-size",	required_argument,	NULL,	'S'},
-	{"work-offset",	required_argument,	NULL,	'o'},
-
-	{"count",	required_argument,	NULL,	'c'},
-	{"work-time",	required_argument,	NULL,	'w'},
-
 	{"interval",	required_argument,	NULL,	'i'},
-	{"burst",	required_argument,	NULL,	'b'},
-	{"speed-limit",	required_argument,	NULL,	'l'},
-	{"rate-limit",  required_argument,	NULL,	'r'},
-
-	{"warmup",	required_argument,	NULL,	'a'},
-	{"min-time",	required_argument,	NULL,	't'},
+	{"json",		no_argument,		NULL,	'J'},
+	{"keep",		no_argument,		NULL,	'k'},
+	{"linear",		no_argument,		NULL,	'L'},
 	{"max-time",	required_argument,	NULL,	'T'},
-
+	{"min-time",	required_argument,	NULL,	't'},
+	{"nowait",		no_argument,		NULL,   'N'},
 	{"print-count", required_argument,	NULL,	'p'},
 	{"print-interval", required_argument,	NULL,	'P'},
-
-	{"entropy",	required_argument,	NULL,	'e'},
-
-	{0,		0,			NULL,	0},
+	{"quiet",		no_argument,		NULL,	'q'},
+	{"rapid",		no_argument,		NULL,	'R'},
+	{"rate-limit",  required_argument,	NULL,	'r'},
+	{"read-write",	no_argument,		NULL,	'G'},
+	{"size",		required_argument,	NULL,	's'},
+	{"speed-limit",	required_argument,	NULL,	'l'},
+	{"sync",		no_argument,		NULL,	'Y'},
+	{"time",		optional_argument,	NULL,   'I'},
+	{"uring",		no_argument,		NULL,	'U'},
+	{"version",		no_argument,		NULL,	'v'},
+	{"warmup",		required_argument,	NULL,	'a'},
+	{"work-offset",	required_argument,	NULL,	'o'},
+	{"work-size",	required_argument,	NULL,	'S'},
+	{"work-time",	required_argument,	NULL,	'w'},
+	{"write",		no_argument,		NULL,	'W'},
+	{0,		0,		NULL,	0},
 };
 
 #endif /* HAVE_GETOPT_LONG */
@@ -724,15 +716,15 @@ void usage(FILE *output)
 			"      -D, -direct                use direct I/O (O_DIRECT)\n"
 			"      -E  -ignore-error          continue after request failure\n"
 			"      -G, -read-write            read-write ping-pong mode\n"
+			"      -H, -hipri                 use high priority I/O (RWF_HIPRI)\n"
+			"      -k, -keep                  keep and reuse temporary file (ioping.tmp)\n"
 			"      -L, -linear                use sequential operations\n"
 			"      -N, -nowait                use nowait I/O (RWF_NOWAIT)\n"
-			"      -H, -hipri                 use high priority I/O (RWF_HIPRI)\n"
-			"      -U, -uring		  use asynchronous I/O uring\n"
+			"      -R, -rapid                 test with rapid I/O during 3s (-q -i 0 -w 3)\n"
+			"      -U, -uring                 use asynchronous I/O uring\n"
 			"      -W, -write                 use write I/O (please read manpage)\n"
 			"      -Y, -sync                  use sync I/O (O_SYNC)\n"
 			"      -y, -dsync                 use data sync I/O (O_DSYNC)\n"
-			"      -R, -rapid                 test with rapid I/O during 3s (-q -i 0 -w 3)\n"
-			"      -k, -keep                  keep and reuse temporary file (ioping.tmp)\n"
 			"\n"
 			" parameters:\n"
 			"      -a, -warmup <count>        ignore <count> first requests (1)\n"
@@ -740,21 +732,21 @@ void usage(FILE *output)
 			"      -c, -count <count>         stop after <count> requests\n"
 			"      -e, -entropy <seed>        seed for random number generator (0)\n"
 			"      -i, -interval <time>       interval between requests (1s)\n"
-			"      -s, -size <size>           request size (4k)\n"
-			"      -S, -work-size <size>      working set size (1m)\n"
-			"      -o, -work-offset <size>    working set offset (0)\n"
-			"      -w, -work-time <time>      stop after <time> passed\n"
 			"      -l, -speed-limit <size>    limit speed with <size> per second\n"
+			"      -o, -work-offset <size>    working set offset (0)\n"
 			"      -r, -rate-limit <count>    limit rate with <count> per second\n"
-			"      -t, -min-time <time>       minimal valid request time (0us)\n"
+			"      -S, -work-size <size>      working set size (1m)\n"
+			"      -s, -size <size>           request size (4k)\n"
 			"      -T, -max-time <time>       maximum valid request time\n"
+			"      -t, -min-time <time>       minimal valid request time (0us)\n"
+			"      -w, -work-time <time>      stop after <time> passed\n"
 			"\n"
 			" output:\n"
 			"      -B, -batch                 print final statistics in raw format\n"
 			"      -I, -time [format]         print current time for every request\n"
 			"      -J, -json                  print output in JSON format\n"
-			"      -p, -print-count <count>   print statistics for every <count> requests\n"
 			"      -P, -print-interval <time> print statistics for every <time>\n"
+			"      -p, -print-count <count>   print statistics for every <count> requests\n"
 			"      -q, -quiet                 suppress human-readable output\n"
 			"      -h, -help                  display this message and exit\n"
 			"      -v, -version               display version and exit\n"
