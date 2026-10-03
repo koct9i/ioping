@@ -430,7 +430,8 @@ int fsync(int fd)
 	return FlushFileBuffers(h) ? 0 : -1;
 }
 
-int nanosleep(const struct timespec *req, struct timespec *rem)
+#define nanosleep(req, rem) _nanosleep(req, rem)
+int _nanosleep(const struct timespec *req, struct timespec *rem)
 {
 	(void)rem;
 	Sleep(req->tv_sec * 1000 + req->tv_nsec / 1000000);
