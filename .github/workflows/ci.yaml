@@ -14,50 +14,57 @@ jobs:
           # https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job
           - os: ubuntu-latest
 
-          - os: ubuntu-latest
-            image: ubuntu:22.04
+          # https://hub.docker.com/_/ubuntu
           - os: ubuntu-latest
             image: ubuntu:24.04
+          - os: ubuntu-latest
+            image: ubuntu:26.04
 
+          # https://hub.docker.com/_/fedora
           - os: ubuntu-latest
-            image: fedora:41
+            image: fedora:44
           - os: ubuntu-latest
-            image: fedora:42
+            image: fedora:45
 
-          - os: ubuntu-latest
-            image: debian:11
+          # https://hub.docker.com/_/debian
           - os: ubuntu-latest
             image: debian:12
+          - os: ubuntu-latest
+            image: debian:13
 
+          # https://hub.docker.com/_/alpine
           - os: ubuntu-latest
             image: alpine:3
 
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-26.04-arm
 
-          # - os: ubuntu-24.04-arm
-          #  image: ubuntu:22.04
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-26.04-arm
             image: ubuntu:24.04
+          - os: ubuntu-26.04-arm
+            image: ubuntu:26.04
 
-          - os: ubuntu-24.04-arm
-            image: debian:11
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-26.04-arm
             image: debian:12
+          - os: ubuntu-26.04-arm
+            image: debian:13
 
-          - os: ubuntu-24.04-arm
-            image: fedora:41
-          - os: ubuntu-24.04-arm
-            image: fedora:42
+          - os: ubuntu-26.04-arm
+            image: fedora:44
+          - os: ubuntu-26.04-arm
+            image: fedora:45
 
-          # - os: ubuntu-24.04-arm
-          #   image: alpine:3
+          # JavaScript Actions in Alpine containers are only supported on x64 Linux runners.
+          # - os: ubuntu-26.04-arm
+          #  image: alpine:3
 
-          - os: macos-13
-          - os: macos-14
+          # https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job#standard-github-hosted-runners-for-public-repositories
+          # https://github.com/actions/runner-images
           - os: macos-15
+          - os: macos-26
+          - os: xcode-27
 
           - os: ubuntu-latest
-            image: ubuntu:24.04
+            image: ubuntu:26.04
             target: x86_64-w64-mingw32
 
     runs-on: ${{ matrix.build.os }}
